@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('file_id', 255);
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->integer('permission_id');
+            $table->foreignId('permission_id')->constrained('permissions')->onDelete('restrict')->onUpdate('cascade');
+            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 
             $table->foreign('file_id')->references('id')->on('files')->cascadeOnDelete();
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
         });
     }
 
