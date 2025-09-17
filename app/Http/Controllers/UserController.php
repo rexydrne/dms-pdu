@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -46,6 +47,12 @@ class UserController extends Controller
             $user = User::create($data);
             $user->assignRole('admin');
 
+            $root = new File();
+            $root->name = $user->email;
+            $root->is_folder = 1;
+            $root->created_by = $user->id;
+            $root->updated_by = $user->id;
+            $root->makeRoot()->save();
 
             return response()->json([
                 'message' => 'User Created',
