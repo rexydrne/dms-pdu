@@ -28,4 +28,7 @@ Route::get('email/verify/{id}/{hash}', [UserController::class, 'verifyEmail'])
 Route::get('email/resend', [UserController::class, 'resendVerificationEmail'])
     ->name('verification.resend');
 
+Route::post('/forgot-password', [UserController::class, 'sendResetToken']);
+Route::post('/verify-token', [UserController::class, 'verifyToken']);
+Route::post('/reset-password', [UserController::class, 'resetPassword']);
 
