@@ -25,16 +25,13 @@ class UserController extends Controller
                 'email.email' => 'The email must be a valid email address.',
                 'email.unique' => 'This email is already registered.',
                 'fullname.required' => 'The fullname field is required.',
-                'username.required' => 'The username field is required.',
-                'username.unique' => 'This username is already taken.',
                 'password.required' => 'The password field is required.',
                 'password.confirmed' => 'Password confirmation does not match.',
                 'password.min' => 'The password must be at least 8 characters.',
             ];
 
             $validator = Validator::make($request->all(), [
-                'fullname' => 'required|string|max:255',
-                'username' => 'required|string|unique:users,username|max:50',
+                'fullname' => 'required|string|unique:users,fullname|max:255',
                 'email' => 'required|email|unique:users,email|max:255',
                 'password' => 'required|confirmed|min:8',
             ], $messages);
@@ -49,7 +46,6 @@ class UserController extends Controller
             return DB::transaction(function () use ($request) {
                 $user = User::create([
                     'fullname' => $request->fullname,
-                    'username' => $request->username,
                     'email' => $request->email,
                     'password' => Hash::make($request->password),
                 ]);
