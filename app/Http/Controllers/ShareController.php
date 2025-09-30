@@ -8,12 +8,14 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Ramsey\Uuid\Type\Integer;
 
 class ShareController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index(File $fileId){
-
-        Log::info($fileId->id);
 
         try {
             if (!Auth::check()) {
@@ -48,6 +50,55 @@ class ShareController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve shared users: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function userSharedFiles($fileId, $email){
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'message' => 'Unauthenticated'],
+                    401);
+            }
+
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "User with email $email not found.",
+                ], 404);
+            }
+
+            $userId = $user->id;
+
+            $sharedFiles = Shareable::where('user_id', $userId)
+            ->where('file_id', $fileId)
+            ->with(['file', 'permission', 'file.user'])
+            ->get()
+            ->map(function ($share) {
+                return [
+                    'file_id' => $share->file->id,
+                    'file_name' => $share->file->name,
+                    'shared_by' => [
+                        'id' => $share->file->user->id,
+                        'name' => $share->file->user->fullname,
+                        'email' => $share->file->user->email,
+                    ],
+                    'permission' => $share->permission->name,
+                ];
+            });
+
+
+            return response()->json([
+                'success' => true,
+                'data' => $sharedFiles,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve shared files: ' . $e->getMessage(),
             ], 500);
         }
     }
