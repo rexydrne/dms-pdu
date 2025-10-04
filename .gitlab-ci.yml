@@ -72,6 +72,7 @@ deploy_to_vps:
     - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - eval $(ssh-agent -s)
+    - echo "$SSH_PASSPHRASE" | SSH_ASKPASS=/bin/echo ssh-add ~/.ssh/id_rsa < /dev/null
     - ssh-add ~/.ssh/id_rsa
     - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
 
