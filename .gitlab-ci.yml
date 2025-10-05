@@ -1,0 +1,114 @@
+# ---------- PIPELINES ----------
+
+stages:
+  - build
+  - test
+  - deploy
+
+cache:
+  paths:
+    - vendor/
+    - ~/.composer/cache/
+
+variables:
+  DEPLOY_USER: $USER
+  DEPLOY_HOST: $HOST
+  DEPLOY_PATH: /var/www/dms-pdu
+  BRANCH_DEPLOY: dev-ann
+  MYSQL_DATABASE: $DBNAME
+  MYSQL_USER: $DBUSER
+  MYSQL_PASSWORD: $DBPASSWORD  
+
+# ---------- BUILD ----------
+build_app:
+  stage: build
+  image: laravelsail/php82-composer:latest
+  script:
+    - echo "Installing dependencies..."
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress
+    - cp .env.example .env
+    - php artisan key:generate
+    - php artisan config:clear
+  artifacts:
+    expire_in: 1 month
+    paths:
+      - vendor/
+
+# ---------- TEST ----------
+unit_test_app:
+  stage: test
+  only:
+    - dev-ann
+  image: laravelsail/php82-composer:latest
+  services:
+    - mysql:latest
+  variables:
+    MYSQL_DATABASE: test_db
+    MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+  script:
+    - apt-get update 
+    - apt-get install -y unzip default-mysql-client libpng-dev libzip-dev libonig-dev libxml2-dev
+    - docker-php-ext-install pdo_mysql
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer require --dev phpunit/phpunit
+    - composer install
+    - cp .env.example .env
+    - sed -i 's/DB_HOST=127.0.0.1/DB_HOST=mysql/' .env
+    - php artisan key:generate
+    - php artisan config:cache
+    - php artisan migrate --seed
+    - php artisan test
+
+# ---------- DEPLOY ----------
+deploy_to_vps:
+  stage: deploy
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH == "main"'
+      when: manual
+    - if: '$CI_COMMIT_BRANCH == "dev-ann"'
+      when: manual
+    - when: never
+
+  before_script:
+    - echo "Starting deployment to VPS..."
+  script:
+    - apt-get update && apt-get install -y rsync openssh-client
+
+    # Setup SSH
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - eval $(ssh-agent -s)
+    - ssh-add ~/.ssh/id_rsa
+    - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        cd $DEPLOY_PATH &&
+        echo 'Pulling latest code...' &&
+
+        git fetch gitlab $BRANCH_DEPLOY &&
+        git reset --hard gitlab/$BRANCH_DEPLOY &&
+        echo 'Creating DB backup...' &&
+        mkdir -p storage/backups &&
+        mysqldump -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE > storage/backups/db_backup_$(date +%F_%H-%M-%S).sql &&
+        echo 'Backup completed.' &&
+
+        php artisan route:clear &&
+        php artisan config:clear &&
+        php artisan view:clear &&
+
+        composer install --no-dev --optimize-autoloader &&
+        php artisan migrate --force &&
+
+        php artisan config:cache &&
+        php artisan route:cache &&
+        php artisan view:cache &&
+
+        sudo systemctl reload php8.2-fpm &&
+        sudo systemctl restart nginx
+      "
+  environment:
+    name: production
+    url: http://$DEPLOY_HOST
+  
+
