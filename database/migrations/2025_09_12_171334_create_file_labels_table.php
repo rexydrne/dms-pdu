@@ -12,12 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('file_labels', function (Blueprint $table) {
-            $table->string('file_id', 255);
+            $table->foreignId('file_id')->constrained('files')->cascadeOnDelete();
             $table->string('label_id', 255);
             $table->timestamps();
 
             $table->primary(['file_id', 'label_id']);
-            $table->foreign('file_id')->references('id')->on('files')->cascadeOnDelete();
             $table->foreign('label_id')->references('id')->on('labels')->cascadeOnDelete();
         });
     }
