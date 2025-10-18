@@ -82,32 +82,38 @@ deploy_to_vps:
     - ssh-add ~/.ssh/id_rsa
     - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
 
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        cd $DEPLOY_PATH &&
-        sudo chown -R $DEPLOY_USER:$DEPLOY_USER storage bootstrap/cache &&
-        echo 'Pulling latest code...' &&
-        git fetch gitlab $BRANCH_DEPLOY &&
-        git reset --hard gitlab/$BRANCH_DEPLOY &&
+    - |
+      ssh $DEPLOY_USER@$DEPLOY_HOST << EOF
+      cd $DEPLOY_PATH &&
+      sudo chown -R $DEPLOY_USER:$DEPLOY_USER storage bootstrap/cache &&
+      echo 'Pulling latest code...' &&
+      git fetch gitlab $BRANCH_DEPLOY &&
+      git reset --hard gitlab/$BRANCH_DEPLOY &&
 
-        echo 'Creating DB backup...' &&
-        mkdir -p storage/backups &&
-        mysqldump -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE > storage/backups/db_backup_$(date +%F_%H-%M-%S).sql &&
-        echo 'Backup completed.' &&
+      echo 'Creating DB backup...' &&
+      mkdir -p storage/backups &&
+      mysqldump -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE > storage/backups/db_backup_$(date +%F_%H-%M-%S).sql &&
+      echo 'Backup completed.' &&
 
-        php artisan route:clear &&
-        php artisan config:clear &&
-        php artisan view:clear &&
+      php artisan route:clear &&
+      php artisan config:clear &&
+      php artisan view:clear &&
 
-        composer install --no-dev --optimize-autoloader &&
-        php artisan migrate --force &&
+      composer install --no-dev --optimize-autoloader &&
+      php artisan migrate --force &&
 
-        php artisan config:cache &&
-        php artisan route:cache &&
-        php artisan view:cache &&
-        
-        sudo systemctl reload php8.2-fpm &&
-        sudo systemctl restart nginx
-      "
+      php artisan config:cache &&
+      php artisan route:cache &&
+      php artisan view:cache &&
+
+      echo 'Applying www-data permissions...' &&
+      sudo chown -R www-data:www-data storage bootstrap/cache &&
+      sudo chmod -R 775 storage bootstrap/cache &&
+
+      sudo systemctl reload php8.2-fpm &&
+      sudo systemctl restart nginx
+      EOF
+      
   environment:
     name: production
     url: http://$DEPLOY_HOST
