@@ -6,7 +6,7 @@ use App\Models\File;
 
 class FileHelper
 {
-    public static function generateUniqueName($name, $parentId, $userId)
+    public static function generateUniqueName($name, $parentId, $userId, $isFolder = false)
     {
         $originalName = $name;
         $extension = '';
@@ -23,6 +23,7 @@ class FileHelper
             File::where('parent_id', $parentId)
                 ->where('created_by', $userId)
                 ->where('name', $newName)
+                ->where('is_folder', $isFolder)
                 ->exists()
         ) {
             $newName = $originalName . " ($counter)" . $extension;
