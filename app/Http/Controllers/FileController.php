@@ -16,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 use App\Helpers\FileHelper;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
@@ -309,6 +310,24 @@ class FileController extends Controller
             'success' => true,
             'message' => 'File(s) restored successfully.',
         ]);
+    }
+
+    public function viewFile(Request $request, $fileId)
+    {
+        $fileRecord = File::findOrFail($fileId);
+        $user = $request->user();
+
+        if ($user->id !== $fileRecord->created_by) {
+            abort(403, 'Access Denied. You do not have permission to view this file.');
+        }
+
+        $path = $fileRecord->storage_path;
+
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'File tidak ditemukan di server.');
+        }
+
+        return Storage::disk('public')->response($path);
     }
 
 }

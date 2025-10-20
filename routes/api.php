@@ -15,9 +15,6 @@ Route::get('/user', function (Request $request) {
 Route::get('/test', function() {
     return response()->json(['message' => 'API is working']);
 });
-Route::get('/test', function() {
-    return response()->json(['message' => 'API is working']);
-});
 
 Route::post('/register-user', [UserController::class, 'register']);
 Route::post('/login-user', [UserController::class, 'login']);
@@ -29,13 +26,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/create-folder', [FileController::class, 'createFolder']);
     Route::post('/upload-files', [FileController::class, 'store']);
     Route::delete('/delete-file', [FileController::class, 'destroy']);
-    Route::delete('/delete-file', [FileController::class, 'destroy']);
+    Route::post('/restore-file', [FileController::class, 'restore']);
+    Route::get('view-file/{fileId}', [FileController::class, 'viewFile'])->name('file.view');
+
     Route::post('/share-file/{file_id}', [ShareController::class, 'store']);
-    Route::post('/restore-file', [FileController::class, 'restore']);
-    Route::post('/restore-file', [FileController::class, 'restore']);
     Route::get('/shared-file/{file_id}', [ShareController::class, 'index']);
     Route::get('/user-shared-files/{file_id}/{email}', [ShareController::class, 'userSharedFiles']);
     Route::get('/shared-with-me', [ShareController::class, 'sharedWithMe']);
+
     Route::get('/labels', [LabelController::class, 'index']);
     Route::get('/label/{labelId}', [LabelController::class, 'show']);
     Route::post('/create-label', [LabelController::class, 'store']);

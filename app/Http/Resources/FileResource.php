@@ -22,7 +22,7 @@ class FileResource extends JsonResource
             "storage_path" => $this->storage_path,
             "url" => $this->is_folder
                 ? null
-                : Storage::disk('public')->url($this->storage_path),
+                : route('file.view', ['fileId' => $this->id]),
             "parent_id" => $this->parent_id,
             "is_folder" => $this->is_folder,
             "mime" => $this->mime,
