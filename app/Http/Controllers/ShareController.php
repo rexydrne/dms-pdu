@@ -25,6 +25,13 @@ class ShareController extends Controller
                     401);
             }
 
+            if (Auth::id() !== $fileId->created_by) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to view shared users for this file.',
+                ], 403);
+            }
+
             $sharedfile = Shareable::where('file_id', $fileId->id)
                 ->with(['user', 'permission'])
                 ->get()
@@ -61,6 +68,13 @@ class ShareController extends Controller
                 return response()->json([
                     'message' => 'Unauthenticated'],
                     401);
+            }
+
+            if (Auth::id() !== File::find($fileId)->created_by) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to view shared users for this file.',
+                ], 403);
             }
 
             $user = User::where('email', $email)->first();
@@ -124,16 +138,8 @@ class ShareController extends Controller
                     401);
             }
 
-            if ($file->id != $request->file_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File ID mismatch.',
-                ], 400);
-            }
-
             $validated = $request->validate([
                 'permission_id' => 'required|exists:permissions,id',
-                'file_id' => 'required|exists:files,id',
                 'emails' => 'required|array|min:1',
                 'emails.*' => 'email|exists:users,email',
             ]);
@@ -249,4 +255,6 @@ class ShareController extends Controller
             ], 500);
         }
     }
+
+    
 }

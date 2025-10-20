@@ -195,7 +195,7 @@ class UserController extends Controller
             ], 200);
         }
 
-        catch (\Illuminate\Validation\ValidationException $e) {
+        catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validasi gagal',
@@ -239,11 +239,23 @@ class UserController extends Controller
             $user = User::where('email', $request->email)->first();
 
             $token = rand(1000, 9999);
-            $expiry = now()->addMinutes(15);
+            $expiry = now()->addMinutes(2);
+
+            $existing = DB::table('password_reset_tokens')
+                ->where('email', $request->email)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token has already been sent. Please check your email.',
+                ], 429);
+            }
 
             DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $request->email],
                 [
-                    'email' => $request->email,
                     'user_id' => $user->id,
                     'token' => $token,
                     'expires_at' => $expiry,
@@ -259,9 +271,11 @@ class UserController extends Controller
                 $message->to($user->email);
                 $message->subject('Token for Password Reset');
             });
+
             return response()->json([
                 'message' => 'Token sent to your email',
             ], 200);
+
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',

@@ -209,7 +209,7 @@ class FileController extends Controller
     private function saveFile($file, $user, $parent): void
     {
         $name = $file->getClientOriginalName();
-        $uniqueName = FileHelper::generateUniqueName($ame, $parent->id, $user->id);
+        $uniqueName = FileHelper::generateUniqueName($name, $parent->id, $user->id);
 
         // $existing = File::where('parent_id', $parent->id)
         //     ->where('name', $name)
@@ -223,7 +223,7 @@ class FileController extends Controller
         //     ]);
         // }
 
-        $path = $file->store('/files/' . $user->id, 'local');
+        $path = $file->store('/files/' . $user->id, 'public');
 
         $model = new File();
         $model->storage_path = $path;

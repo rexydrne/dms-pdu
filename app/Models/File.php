@@ -26,6 +26,7 @@ class File extends Model
     protected $fillable = [
         'name',
         'path',
+        'storage_path',
         '_lft',
         '_rgt',
         'parent_id',
@@ -128,6 +129,12 @@ class File extends Model
         foreach ($nodes as $node) {
             $node->delete();
         }
+    }
+
+    public function labels()
+    {
+        return $this->belongsToMany(Label::class, 'file_has_labels', 'file_id', 'label_id')
+            ->withTimestamps();
     }
 
 }
