@@ -223,7 +223,7 @@ class FileController extends Controller
         //     ]);
         // }
 
-        $path = $file->store('/files/' . $user->id, 'local');
+        $path = $file->store('/files/' . $user->id, 'public');
 
         $model = new File();
         $model->storage_path = $path;
