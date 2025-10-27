@@ -12,6 +12,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::get('/users', [UserController::class, 'index'])->middleware('auth:sanctum');
+
 Route::get('/test', function() {
     return response()->json(['message' => 'API is working']);
 });
@@ -33,12 +35,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shared-file/{file_id}', [ShareController::class, 'index']);
     Route::get('/user-shared-files/{file_id}/{email}', [ShareController::class, 'userSharedFiles']);
     Route::get('/shared-with-me', [ShareController::class, 'sharedWithMe']);
+    Route::patch('/update-share/{share_id}', [ShareController::class, 'update']);
+    Route::delete('/remove-share/{share_id}', [ShareController::class, 'destroy']);
 
     Route::get('/labels', [LabelController::class, 'index']);
     Route::get('/label/{labelId}', [LabelController::class, 'show']);
     Route::post('/create-label', [LabelController::class, 'store']);
     Route::patch('/update-label/{labelId}', [LabelController::class, 'update']);
     Route::delete('/delete-label/{labelId}', [LabelController::class, 'destroy']);
+
 });
 
 Route::get('email/verify/{id}/{hash}', [UserController::class, 'verifyEmail'])

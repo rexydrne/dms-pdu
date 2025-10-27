@@ -17,6 +17,22 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
+    public function index()
+    {
+        try {
+            $users = User::all();
+
+            return response()->json([
+                'success' => true,
+                'data' => $users,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve users: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
     public function register(Request $request)
     {
         try {
