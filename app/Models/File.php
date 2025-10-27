@@ -26,6 +26,7 @@ class File extends Model
     protected $fillable = [
         'name',
         'path',
+        'storage_path',
         '_lft',
         '_rgt',
         'parent_id',
