@@ -7,6 +7,7 @@ use App\Models\Shareable;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pail\ValueObjects\Origin\Console;
 use Ramsey\Uuid\Type\Integer;
@@ -264,4 +265,68 @@ class ShareController extends Controller
     }
 
 
+    public function update(Request $request, string $id)
+    {
+        try{
+            $shareable = Shareable::findOrFail($id);
+
+            $file = File::find($shareable->file_id);
+
+            if (Auth::id() !== $file->created_by) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to update this share.',
+                ], 403);
+            }
+
+            $request->validate([
+                'permission_id' => 'required|exists:permissions,id',
+            ]);
+
+            return DB::transaction (function () use ($request, $shareable) {
+                $shareable->update([
+                    'permission_id' => $request->permission_id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Shareable updated successfully',
+                    'data' => $shareable
+                ], 200);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update share file: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function destroy(string $id)
+    {
+        try {
+            return DB::transaction(function () use ($id) {
+                $shareable = Shareable::findOrFail($id);
+
+                $file = File::find($shareable->file_id);
+
+                if (Auth::id() !== $file->created_by) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You do not have permission to delete this share.',
+                    ], 403);
+                }
+
+                $shareable->delete();
+
+                return response()->json([
+                    'message' => 'Shareable deleted successfully',
+                ], 200);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete share file: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
