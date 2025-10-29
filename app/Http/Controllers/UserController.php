@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
@@ -224,6 +225,60 @@ class UserController extends Controller
                 'status' => 'error',
                 'message' => 'Terjadi error saat login',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateUserProfile(Request $request){
+        try {
+            $request->validate([
+                'fullname' => 'sometimes|string|max:255',
+                'email' => 'sometimes|email|max:255|unique:users,email,' . $request->user()->id,
+                'photo_profile' => 'nullable|image|max:2048',
+            ]);
+
+            return DB::transaction(function () use ($request) {
+                $user = $request->user();
+
+                if ($request->has('fullname')) {
+                    $user->fullname = $request->input('fullname');
+                }
+
+                if ($request->has('email')) {
+                    $user->email = $request->input('email');
+                }
+
+                if ($request->hasFile('photo_profile')) {
+                    if (!empty($user->photo_profile_path)) {
+                        Storage::delete('profile_photos/' . $user->photo_profile_path);
+                    }
+
+                    $extension = $request->file('photo_profile')->getClientOriginalExtension();
+                    $basename = uniqid() . time();
+                    $path = "{$basename}.{$extension}";
+                    $request->file('photo_profile')->storeAs('profile_photos', $path);
+
+                    $user->photo_profile_path = $path;
+                }
+
+                $user->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profile updated successfully',
+                    'data' => $user,
+                ], 200);
+            });
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An error occurred while processing the request: ' . $e->getMessage(),
             ], 500);
         }
     }
