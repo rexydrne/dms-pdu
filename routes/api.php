@@ -20,9 +20,11 @@ Route::get('/test', function() {
 
 Route::post('/register-user', [UserController::class, 'register']);
 Route::post('/login-user', [UserController::class, 'login']);
-Route::post('/logout-user', [UserController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::patch('/update-profile', [UserController::class, 'updateUserProfile']);
+    Route::post('/logout-user', [UserController::class, 'logout']);
+
     Route::get('/my-files/{folderId?}', [FileController::class, 'myFiles'])->whereNumber('folderId');
     Route::get('/trash', [FileController::class, 'trash']);
     Route::post('/create-folder', [FileController::class, 'createFolder']);
