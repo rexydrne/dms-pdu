@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Requests\FilesActionRequest;
 use App\Http\Requests\TrashFilesRequest;
+use App\Http\Requests\ForceDeleteFilesRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Models\File;
 use App\Http\Requests\StoreFileRequest;
@@ -17,6 +18,7 @@ use App\Helpers\FileHelper;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class FileController extends Controller
 {
@@ -333,6 +335,242 @@ class FileController extends Controller
         }
 
         return Storage::disk('public')->response($path);
+    }
+
+    public function forceDestroy(ForceDeleteFilesRequest $request)
+    {
+        $data = $request->validated();
+
+        if (!empty($data['all'])) {
+            $files = File::onlyTrashed()
+                ->leftJoin('shareables', 'shareables.file_id', 'files.id')
+                ->where(function ($q) {
+                    $q->where('files.created_by', Auth::id())
+                        ->orWhere('shareables.user_id', Auth::id());
+                })
+                ->select('files.*')
+                ->orderBy('_lft', 'desc')
+                ->get();
+        } else {
+            $ids = $data['ids'] ?? [];
+            $files = File::onlyTrashed()
+                ->whereIn('id', $ids)
+                ->orderBy('_lft', 'desc')
+                ->get();
+        }
+
+        foreach ($files as $file) {
+            try {
+                if ($file->is_folder) {
+                    $descendants = File::onlyTrashed()
+                        ->whereDescendantOf($file)
+                        ->orderBy('_lft', 'desc')
+                        ->get();
+
+                    foreach ($descendants as $desc) {
+                        if (! $desc->is_folder && $desc->storage_path && Storage::disk('public')->exists($desc->storage_path)) {
+                            Storage::disk('public')->delete($desc->storage_path);
+                        }
+                        $desc->forceDelete();
+                    }
+                }
+
+                if (! $file->is_folder && $file->storage_path && Storage::disk('public')->exists($file->storage_path)) {
+                    Storage::disk('public')->delete($file->storage_path);
+                }
+
+                $file->forceDelete();
+            } catch (Exception $e) {
+                Log::error("Failed to permanently delete file id {$file->id}: {$e->getMessage()}");
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'File(s) permanently deleted.',
+        ]);
+    }
+
+    public function download(FilesActionRequest $request)
+    {
+        $data = $request->validated();
+        $parent = $request->parent;
+        $parentName = $parent->name ?? null;
+
+        $all = $data['all'] ?? false;
+        $ids = $data['ids'] ?? [];
+
+        if (!$all && empty($ids)) {
+            return [
+                'message' => 'Please select files to download'
+            ];
+        }
+
+        if ($all) {
+            if (! $parent) {
+                throw ValidationException::withMessages([
+                    'parent_id' => ['Parent folder is required when "all" is true.']
+                ]);
+            }
+
+            $zipPath = $this->createZip($parent->children);
+            $url = url('/api/storage-file') . '?path=' . urlencode($zipPath);
+            $filename = $parent->name . '.zip';
+        } else {
+            [$url, $filename] = $this->getDownloadUrl($ids, $parentName);
+        }
+
+        return [
+            'url' => $url,
+            'filename' => $filename
+        ];
+    }
+
+    public function createZip($files): string
+    {
+        $zipPath = 'zip/' . Str::random() . '.zip';
+        $publicPath = "$zipPath";
+
+        if (!Storage::disk('public')->exists(dirname($publicPath))) {
+            Storage::disk('public')->makeDirectory(dirname($publicPath));
+        }
+
+        $zipFile = Storage::disk('public')->path($publicPath);
+
+        $zip = new \ZipArchive();
+
+        if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            $this->addFilesToZip($zip, $files);
+            $zip->close();
+
+            if (! Storage::disk('public')->exists($zipPath)) {
+                Log::error("Zip file was not created at expected path: {$zipFile}");
+                throw ValidationException::withMessages([
+                    'zip' => ['Failed to create zip archive.']
+                ]);
+            }
+            return $zipPath;
+        }
+
+        Log::error("Failed to open zip archive for creation: {$zipFile}");
+        throw ValidationException::withMessages([
+            'zip' => ['Failed to create zip archive.']
+        ]);
+
+
+        return Storage::disk('public')->url($zipPath);
+    }
+
+    private function addFilesToZip($zip, $files, $ancestors = '')
+    {
+        if (! Storage::disk('public')->exists('tmp')) {
+            Storage::disk('public')->makeDirectory('tmp');
+        }
+
+        foreach ($files as $file) {
+            if ($file->is_folder) {
+                $children = $file->children ?? $file->load('children')->children;
+                $this->addFilesToZip($zip, $file->children, $ancestors . $file->name . '/');
+                continue;
+            }
+
+            try {
+                if (! $file->storage_path) {
+                    continue;
+                }
+
+                if (Storage::disk('public')->exists($file->storage_path)) {
+                    $localPath = Storage::disk('public')->path($file->storage_path);
+                } else {
+                    if (! Storage::exists($file->storage_path)) {
+                        Log::warning("Source file not found on any disk: {$file->storage_path} (id: {$file->id})");
+                        continue;
+                    }
+
+                    $content = Storage::get($file->storage_path);
+                    $dest = 'tmp/' . Str::random(8) . '_' . basename($file->storage_path);
+                    Storage::disk('public')->put($dest, $content);
+                    $localPath = Storage::disk('public')->path($dest);
+                }
+
+                if (file_exists($localPath)) {
+                    $zip->addFile($localPath, $ancestors . $file->name);
+                } else {
+                    Log::warning("Local path for zipping does not exist: {$localPath} (file id: {$file->id})");
+                }
+            } catch (Exception $e) {
+                Log::warning("Failed to add file to zip: {$file->id} - {$e->getMessage()}");
+                continue;
+            }
+
+
+        }
+    }
+
+    private function getDownloadUrl(array $ids, $zipName)
+    {
+        if (count($ids) === 1) {
+            $file = File::withTrashed()->findOrFail($ids[0]);
+
+            if ($file->is_folder) {
+                $children = $file->children()->get();
+                if ($children->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'ids' => ['The folder is empty.']
+                    ]);
+                }
+
+                $zipPath = $this->createZip($children);
+                $url = url('/api/storage-file') . '?path=' . urlencode($zipPath);
+                $filename = $file->name . '.zip';
+
+                return [$url, $filename];
+            }
+
+            if ($file->storage_path) {
+                return [url('/api/view-file/' . $file->id), $file->name];
+            }
+
+            if (Storage::exists($file->storage_path)) {
+                return [Storage::url($file->storage_path), $file->name];
+            }
+
+            throw ValidationException::withMessages([
+                'ids' => ['Storage path missing for the file.']
+            ]);
+        }
+
+        $files = File::withTrashed()->whereIn('id', $ids)->get();
+        if ($files->isEmpty()) {
+            throw ValidationException::withMessages([
+                'ids' => ['No files found to download.']
+            ]);
+        }
+
+        $zipPath = $this->createZip($files);
+        $url = url('/api/storage-file') . '?path=' . urlencode($zipPath);
+        $filename = ($zipName ?: 'files') . '.zip';
+
+        return [$url, $filename];
+    }
+
+    public function serveStorageFile(Request $request)
+    {
+        $path = $request->query('path');
+
+        if (! $path) {
+            throw ValidationException::withMessages(['path' => 'Path is required']);
+        }
+
+        if (! preg_match('/^(zip|tmp)\//', $path)) {
+            abort(403, 'Forbidden');
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        return Storage::disk('public')->download($path);
     }
 
 }
