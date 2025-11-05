@@ -4,6 +4,7 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\ShareController;
+use App\Models\Shareable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Contracts\Role;
@@ -58,3 +59,5 @@ Route::post('/forgot-password', [UserController::class, 'sendResetToken']);
 Route::post('/verify-token', [UserController::class, 'verifyToken']);
 Route::post('/reset-password', [UserController::class, 'resetPassword']);
 
+Route::get('/share/{token}', [ShareController::class, 'accessSharedFile'])
+    ->name('file.share');

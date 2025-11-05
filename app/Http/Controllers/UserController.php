@@ -237,6 +237,7 @@ class UserController extends Controller
                 'photo_profile' => 'nullable|image|max:2048',
             ]);
 
+            
             return DB::transaction(function () use ($request) {
                 $user = $request->user();
 
@@ -250,13 +251,13 @@ class UserController extends Controller
 
                 if ($request->hasFile('photo_profile')) {
                     if (!empty($user->photo_profile_path)) {
-                        Storage::delete('profile_photos/' . $user->photo_profile_path);
+                        Storage::disk('public')->delete('profile_photos/' . $user->photo_profile_path);
                     }
 
                     $extension = $request->file('photo_profile')->getClientOriginalExtension();
                     $basename = uniqid() . time();
                     $path = "{$basename}.{$extension}";
-                    $request->file('photo_profile')->storeAs('profile_photos', $path);
+                    $request->file('photo_profile')->storeAs('profile_photos', $path, 'public');
 
                     $user->photo_profile_path = $path;
                 }

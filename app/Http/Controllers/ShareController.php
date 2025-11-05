@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\FileSharedMail;
 use App\Models\File;
 use App\Models\Shareable;
 use App\Models\User;
@@ -9,9 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Pail\ValueObjects\Origin\Console;
 use Ramsey\Uuid\Type\Integer;
 use Spatie\Permission\Models\Permission;
+use Str;
 
 class ShareController extends Controller
 {
@@ -125,15 +128,17 @@ class ShareController extends Controller
      * Store a newly created resource in storage.
      */
 
-    public function store(Request $request, $id){
+    public function store(Request $request, $id)
+    {
         try {
             Log::info('ShareController@store called by user ID: ' . Auth::id());
 
-            $file = File::find($id);
-            Log::info('File to be shared ID: ' . $file);
+            $file = File::findOrFail($id);
+            $sharedBy = Auth::user();
 
+            Log::info('File id shared ' . $file->created_by);
 
-            if (Auth::id() !== $file->created_by) {
+            if ($sharedBy->id !== $file->created_by) {
                 return response()->json([
                     'success' => false,
                     'message' => 'You do not have permission to share this file.',
@@ -142,8 +147,9 @@ class ShareController extends Controller
 
             if (!Auth::check()) {
                 return response()->json([
-                    'message' => 'Unauthenticated'],
-                    401);
+                    'success' => false,
+                    'message' => 'Unauthenticated',
+                ], 401);
             }
 
             $validated = $request->validate([
@@ -151,7 +157,6 @@ class ShareController extends Controller
                 'emails' => 'required|array|min:1',
                 'emails.*' => 'email|exists:users,email',
             ]);
-
 
             foreach ($validated['emails'] as $email) {
                 $user = User::where('email', $email)->first();
@@ -163,10 +168,8 @@ class ShareController extends Controller
                     ], 404);
                 }
 
-                $user_id = $user->id;
-
                 $alreadyShared = Shareable::where('file_id', $file->id)
-                    ->where('user_id', $user_id)
+                    ->where('shared_to', $user->id)
                     ->exists();
 
                 if ($alreadyShared) {
@@ -178,39 +181,23 @@ class ShareController extends Controller
             }
 
             foreach ($validated['emails'] as $email) {
-                $user = User::where('email', $email)->first();
+                $user = User::where('email', $email)->firstOrFail();
 
-                if (!$user) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "User with email $email not found.",
-                    ], 404);
-                };
+                $token = \Illuminate\Support\Str::uuid();
+                $shareLink = url("api/share/{$token}");
 
-                $user_id = $user->id;
+                $file->shares()->attach(
+                    $user->id,
+                    [
+                        'permission_id' => $validated['permission_id'],
+                        'shared_by' => $sharedBy->id,
+                        'token' => $token,
+                    ]
+                );
 
-                $existingShare = $file->shares()
-                    ->wherePivot('user_id', $user_id)
-                    ->wherePivot('permission_id', $validated['permission_id'])
-                    ->first();
-
-                if ($existingShare) {
-                    $file->shares()->updateExistingPivot(
-                        $user_id,
-                        [
-                            'permission_id' => $validated['permission_id'],
-                            'created_by' => Auth::id(),
-                        ]
-                    );
-                } else {
-                    $file->shares()->attach(
-                        $user_id,
-                        [
-                            'permission_id' => $validated['permission_id'],
-                            'created_by' => Auth::id(),
-                        ]
-                    );
-                }
+                Mail::to($user->email)->send(
+                    new FileSharedMail($file, $sharedBy, $user, $shareLink)
+                );
             }
 
             return response()->json([
@@ -218,6 +205,7 @@ class ShareController extends Controller
                 'message' => 'File shared successfully.',
             ]);
         } catch (\Exception $e) {
+            Log::error('ShareController@store failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to share file: ' . $e->getMessage(),
@@ -225,6 +213,23 @@ class ShareController extends Controller
         }
     }
 
+    public function accessSharedFile($token)
+    {
+        $share = Shareable::where('token', $token)->first();
+
+        if (!$share) {
+            abort(404, 'This link is invalid.');
+        }
+
+        $file_path = File::where('id', $share->file_id)->first()->storage_path;
+
+        return redirect()->to("http://127.0.0.1:8000/storage/{$file_path}");
+        // return redirect()->to("http://pdu-dms.my.id/{$file_path}");
+    }
+
+    /**
+     * Display the specified resource.
+     */
 
     public function sharedWithMe(){
         try{
@@ -263,7 +268,6 @@ class ShareController extends Controller
             ], 500);
         }
     }
-
 
     public function update(Request $request, string $id)
     {

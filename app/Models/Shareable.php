@@ -12,7 +12,7 @@ class Shareable extends Model
 
     protected $fillable = [
         'file_id',
-        'user_id',
+        'shared_to',
         'permission_id',
         'shared_by',
     ];
@@ -24,7 +24,7 @@ class Shareable extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'shared_to');
     }
 
     public function permission()
