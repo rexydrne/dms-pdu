@@ -262,11 +262,17 @@ class FileController extends Controller
             $file->name = $newName;
 
             if (!$file->is_folder) {
-                $labelIds = $request->validated('label_ids');
+                $slugCandidate = str_replace('.', ' ', $newName);
+                $newPath = Str::slug($slugCandidate);
 
+                $file->path = $newPath;
+
+                $labelIds = $request->validated('label_ids');
                 if (is_array($labelIds)) {
                     $file->labels()->sync($labelIds);
                 }
+            } else {
+                 $file->path = Str::slug($newName);
             }
 
             $file->save();
