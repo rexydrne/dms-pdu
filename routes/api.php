@@ -29,12 +29,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trash', [FileController::class, 'trash']);
     Route::post('/create-folder', [FileController::class, 'createFolder']);
     Route::post('/upload-files', [FileController::class, 'store']);
+    Route::patch('/update-file/{fileId}', [FileController::class, 'update']);
     Route::delete('/delete-file', [FileController::class, 'destroy']);
     Route::post('/restore-file', [FileController::class, 'restore']);
     Route::delete('/force-delete-file', [FileController::class, 'forceDestroy']);
     Route::get('view-file/{fileId}', [FileController::class, 'viewFile'])->name('file.view');
     Route::post('/download', [FileController::class, 'download']);
     Route::get('/storage-file', [FileController::class, 'serveStorageFile']);
+    Route::get('/file-info/{fileId}', [FileController::class, 'getFileInfo']);
 
     Route::post('/share-file/{file_id}', [ShareController::class, 'store']);
     Route::get('/shared-file/{file_id}', [ShareController::class, 'index']);
