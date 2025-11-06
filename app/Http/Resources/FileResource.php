@@ -30,7 +30,7 @@ class FileResource extends JsonResource
                 : route('file.view', ['fileId' => $this->id]),
             "parent_id" => $this->parent_id,
             "is_folder" => $this->is_folder,
-            // "mime" => $this->mime,
+            "mime" => $this->mime,
             "size" => $this->get_file_size(),
             "type" => $type,
             "owner" => $this->owner,
