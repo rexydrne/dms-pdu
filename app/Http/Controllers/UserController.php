@@ -73,7 +73,7 @@ class UserController extends Controller
                 try {
                     $user->assignRole('admin');
                 } catch (RoleDoesNotExist $e) {
-                    throw new \Exception('Role "admin" does not exist.');
+                    throw new \Exception('Role "admin" does not exist.' . $e->getMessage());
                 }
 
                 $root = new File();
