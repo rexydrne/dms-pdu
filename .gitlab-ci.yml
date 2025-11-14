@@ -41,8 +41,7 @@ unit_test_app:
     - main 
   image: laravelsail/php82-composer:latest 
   services: 
-    - name: mysql:latest
-      alias: mysql
+    - mysql:latest 
   variables: 
     MYSQL_DATABASE: test_db 
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes" 
@@ -55,12 +54,8 @@ unit_test_app:
     - composer install 
     - cp .env.example .env 
     - sed -i 's/DB_HOST=127.0.0.1/DB_HOST=mysql/' .env 
-    - sed -i 's/DB_DATABASE=.*/DB_DATABASE=test_db/' .env 
-    - sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env 
-    - sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=/' .env 
     - php artisan key:generate 
     - php artisan config:cache 
-    - until mysqladmin ping -h mysql --silent; do echo "Waiting for MySQL..."; sleep 2; done
     - php artisan migrate:fresh --seed 
     - php artisan test
 
