@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
             'password' => bcrypt('pdudmsSA')
         ]);
 
-        $superAdmin -> assignRole('superAdmin', 'api');
+        $superAdmin -> assignRole('superAdmin');
 
     }
 }
