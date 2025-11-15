@@ -20,20 +20,20 @@ class PermissionSeeder extends Seeder
         Role::create(['name' => 'guest', 'guard_name' => 'api']);
 
         # Permission - Files
-        Permission::create(['name' => 'create-file']);
-        Permission::create(['name' => 'edit-file']);
-        Permission::create(['name' => 'delete-file']);
-        Permission::create(['name' => 'view-file']);
-        Permission::create(['name' => 'share-file']);
+        Permission::create(['name' => 'create-file', 'guard_name' => 'api']);
+        Permission::create(['name' => 'edit-file', 'guard_name' => 'api']);
+        Permission::create(['name' => 'delete-file', 'guard_name' => 'api']);
+        Permission::create(['name' => 'view-file', 'guard_name' => 'api']);
+        Permission::create(['name' => 'share-file', 'guard_name' => 'api']);
 
         # Permission - Labels
-        Permission::create(['name' => 'create-label']);
-        Permission::create(['name' => 'edit-label']);
-        Permission::create(['name' => 'delete-label']);
+        Permission::create(['name' => 'create-label', 'guard_name' => 'api']);
+        Permission::create(['name' => 'edit-label', 'guard_name' => 'api']);
+        Permission::create(['name' => 'delete-label', 'guard_name' => 'api']);
 
         # Permission - User
-        Permission::create(['name' => 'assign-admin']);
-        Permission::create(['name' => 'assign-permission']);
+        Permission::create(['name' => 'assign-admin', 'guard_name' => 'api']);
+        Permission::create(['name' => 'assign-permission', 'guard_name' => 'api']);
 
         $roleSuperAdmin = Role::findByName('superAdmin', 'api');
         $roleSuperAdmin -> givePermissionTo('create-file');
