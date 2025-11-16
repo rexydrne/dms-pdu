@@ -38,38 +38,10 @@ class StoreFileRequest extends ParentIdBaseRequest
             'files.*' => [
                 'required',
                 'file',
-                // function ($attribute, $value, $fail) {
-                //     if (!$this->folder_name) {
-                //         /** @var $value \Illuminate\Http\UploadedFile */
-                //         $file = File::query()->where('name', $value->getClientOriginalName())
-                //             ->where('created_by', Auth::id())
-                //             ->where('parent_id', $this->parent_id)
-                //             ->whereNull('deleted_at')
-                //             ->exists();
-
-                //         if ($file) {
-                //             $fail('File "' . $value->getClientOriginalName() . '" already exists.');
-                //         }
-                //     }
-                // }
             ],
             'folder_name' => [
                 'nullable',
                 'string',
-                // function ($attribute, $value, $fail) {
-                //     if ($value) {
-                //         /** @var $value \Illuminate\Http\UploadedFile */
-                //         $file = File::query()->where('name', $value)
-                //             ->where('created_by', Auth::id())
-                //             ->where('parent_id', $this->parent_id)
-                //             ->whereNull('deleted_at')
-                //             ->exists();
-
-                //         if ($file) {
-                //             $fail('Folder "' . $value . '" already exists.');
-                //         }
-                //     }
-                // }
             ],
             'labels' => ['nullable', 'array'],
             'labels.*' => ['exists:labels,id'],

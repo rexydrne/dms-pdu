@@ -20,13 +20,6 @@ class StoreFolderRequest extends ParentIdBaseRequest
     {
         return array_merge(parent::rules(), [
             'name' => ['required', 'string'],
-                // 'name' => [
-                //     'required',
-                //     Rule::unique(File::class, 'name')
-                //         ->where('created_by', Auth::id())
-                //         ->where('parent_id', $this->parent_id)
-                //         ->whereNull('deleted_at')
-                // ]
         ]);
     }
 
@@ -34,7 +27,6 @@ class StoreFolderRequest extends ParentIdBaseRequest
     {
         return [
             'name.required' => 'Folder name is required.',
-            // 'name.unique' => 'Folder ":input" already exists'
         ];
     }
 }

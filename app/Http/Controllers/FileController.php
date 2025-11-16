@@ -3,24 +3,26 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 use App\Http\Requests\FilesActionRequest;
 use App\Http\Requests\TrashFilesRequest;
 use App\Http\Requests\ForceDeleteFilesRequest;
-use Illuminate\Support\Facades\Auth;
-use App\Models\File;
 use App\Http\Requests\StoreFileRequest;
 use App\Http\Requests\StoreFolderRequest;
 use App\Http\Requests\UpdateFileRequest;
 use App\Http\Resources\FileResource;
+use App\Models\File;
+use App\Models\FileAccessLog;
 use App\Jobs\UploadFileToCloudJob;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 use App\Helpers\FileHelper;
 use Exception;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class FileController extends Controller
 {
@@ -40,8 +42,10 @@ class FileController extends Controller
                     ->where('created_by', Auth::id())
                     ->where('id', $folderId)
                     ->firstOrFail();
+                $this->trackAccess((int)$folderId, Auth::id());
             } else {
                 $folder = $this->getRoot();
+                $this->trackAccess((int)$folder->id, Auth::id());
             }
 
             $query = File::query()
@@ -78,6 +82,14 @@ class FileController extends Controller
         }
     }
 
+    private function trackAccess(int $fileId, int $userId): void
+    {
+        FileAccessLog::updateOrCreate(
+            ['user_id' => $userId, 'file_id' => $fileId],
+            ['last_accessed_at' => now()]
+        );
+    }
+
     public function trash(Request $request)
     {
         $search = $request->get('search');
@@ -107,21 +119,8 @@ class FileController extends Controller
 
             $uniqueName = FileHelper::generateUniqueName($data['name'], $parent->id, $user->id, true);
 
-            // $exists = File::where('parent_id', $parent->id)
-            //     ->where('name', $data['name'])
-            //     ->where('is_folder', 1)
-            //     ->whereNull('deleted_at')
-            //     ->exists();
-
-            // if ($exists) {
-            //     throw ValidationException::withMessages([
-            //         'name' => ["Folder \"{$data['name']}\" already exists in this directory."],
-            //     ]);
-            // }
-
             $file = new File();
             $file->is_folder = 1;
-            // $file->name = $data['name'];
             $file->name = $uniqueName;
             $file->path = Str::slug($uniqueName);
             $parent->appendNode($file);
@@ -191,17 +190,6 @@ class FileController extends Controller
                 $this->saveFile($file, $user, $parent);
             } elseif (is_array($file)) {
                 $uniqueName = FileHelper::generateUniqueName($name, $parent->id, $user->id, true);
-                // $existing = File::where('parent_id', $parent->id)
-                //     ->where('name', $name)
-                //     ->where('is_folder', 1)
-                //     ->whereNull('deleted_at')
-                //     ->first();
-
-                // if ($existing) {
-                //     throw ValidationException::withMessages([
-                //         'name' => ["Folder \"$name\" already exists in this directory."]
-                //     ]);
-                // }
 
                 $folder = new File();
                 $folder->is_folder = 1;
@@ -218,18 +206,6 @@ class FileController extends Controller
     {
         $name = $file->getClientOriginalName();
         $uniqueName = FileHelper::generateUniqueName($name, $parent->id, $user->id);
-
-        // $existing = File::where('parent_id', $parent->id)
-        //     ->where('name', $name)
-        //     ->where('is_folder', 0)
-        //     ->whereNull('deleted_at')
-        //     ->first();
-
-        // if ($existing) {
-        //     throw ValidationException::withMessages([
-        //         'files' => ["File \"$name\" already exists in this directory."]
-        //     ]);
-        // }
 
         $path = $file->store('/files/' . $user->id, 'public');
         $slugCandidate = str_replace('.', ' ', $uniqueName);
@@ -347,7 +323,6 @@ class FileController extends Controller
                 ->get();
 
             foreach ($children as $child) {
-                // restore parent chain
                 $parent = $child->parent;
                 while ($parent && $parent->trashed()) {
                     $parent->restore();
@@ -384,6 +359,7 @@ class FileController extends Controller
         if ($user->id !== $fileRecord->created_by) {
             abort(403, 'Access Denied. You do not have permission to view this file.');
         }
+        $this->trackAccess((int) $fileId, $user->id);
 
         $path = $fileRecord->storage_path;
 
@@ -648,6 +624,7 @@ class FileController extends Controller
                 ->with(['labels', 'shareables.user', 'shareables.permission', 'user'])
                 ->firstOrFail();
 
+            $this->trackAccess((int)$fileId, Auth::id());
             $ancestors = $file->ancestors()->get();
 
             $shares = $file->shareables->map(function ($share) {
@@ -689,6 +666,48 @@ class FileController extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function getDashboardData()
+    {
+        $userId = Auth::id();
+
+        $lastOpenedLogs = \DB::table('file_access_logs')
+            ->where('file_access_logs.user_id', $userId)
+            ->join('files', 'files.id', '=', 'file_access_logs.file_id')
+            ->whereNull('files.deleted_at')
+            ->orderBy('file_access_logs.last_accessed_at', 'desc')
+            ->limit(12)
+            ->select('files.*', 'file_access_logs.last_accessed_at')
+            ->get();
+
+        $lastOpenedLogs = File::hydrate($lastOpenedLogs->toArray());
+        $lastOpenedLogs = $lastOpenedLogs->each(function (File $file) use ($lastOpenedLogs) {
+            $log = $lastOpenedLogs->firstWhere('id', $file->id);
+            $file->last_accessed_at = $log ? $log->last_accessed_at : null;
+        });
+
+        $lastOpenedFolders = $lastOpenedLogs->where('is_folder', true)->take(6);
+        $lastOpenedFiles = $lastOpenedLogs->where('is_folder', false)->take(6);
+
+        $recommendedFiles = File::query()
+            ->select('files.*', \DB::raw('COUNT(log.id) as access_count'))
+            ->join('file_access_logs as log', 'log.file_id', '=', 'files.id')
+            ->where('files.created_by', $userId)
+            ->where('log.user_id', $userId)
+            ->where('files.is_folder', false)
+            ->whereNull('files.deleted_at')
+            ->groupBy('files.id')
+            ->orderByDesc('access_count')
+            ->orderByDesc('files.updated_at')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'last_opened_folders' => FileResource::collection($lastOpenedFolders),
+            'last_opened_files'   => FileResource::collection($lastOpenedFiles),
+            'recommended_files'   => FileResource::collection($recommendedFiles),
+        ]);
     }
 
 }

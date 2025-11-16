@@ -27,23 +27,25 @@ Route::post('/register-user', [UserController::class, 'register']);
 Route::post('/login-user', [UserController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/dashboard', [FileController::class, 'getDashboardData']);
     Route::patch('/update-profile', [UserController::class, 'updateUserProfile']);
     Route::post('/logout-user', [UserController::class, 'logout']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
     Route::post('/delete-photo-profile', [UserController::class, 'deletePhotoProfile']);
 
     Route::get('/my-files/{folderId?}', [FileController::class, 'myFiles'])->whereNumber('folderId');
-    Route::get('/trash', [FileController::class, 'trash']);
     Route::post('/create-folder', [FileController::class, 'createFolder']);
     Route::post('/upload-files', [FileController::class, 'store']);
     Route::patch('/update-file/{fileId}', [FileController::class, 'update']);
     Route::delete('/delete-file', [FileController::class, 'destroy']);
-    Route::post('/restore-file', [FileController::class, 'restore']);
-    Route::delete('/force-delete-file', [FileController::class, 'forceDestroy']);
     Route::get('view-file/{fileId}', [FileController::class, 'viewFile'])->name('file.view');
     Route::post('/download', [FileController::class, 'download']);
     Route::get('/storage-file', [FileController::class, 'serveStorageFile']);
     Route::get('/file-info/{fileId}', [FileController::class, 'getFileInfo']);
+
+    Route::get('/trash', [FileController::class, 'trash']);
+    Route::post('/restore-file', [FileController::class, 'restore']);
+    Route::delete('/force-delete-file', [FileController::class, 'forceDestroy']);
 
     Route::post('/share-file/{file_id}', [ShareController::class, 'store']);
     Route::get('/shared-file/{file_id}', [ShareController::class, 'index']);
