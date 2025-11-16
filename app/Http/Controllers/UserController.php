@@ -71,9 +71,9 @@ class UserController extends Controller
                 $user->sendEmailVerificationNotification();
 
                 try {
-                    $user->assignRole('admin');
+                    $user->assignRole('admin', 'api');
                 } catch (RoleDoesNotExist $e) {
-                    throw new \Exception('Role "admin" does not exist.');
+                    throw new \Exception('Role "admin" does not exist.' . $e->getMessage());
                 }
 
                 $root = new File();

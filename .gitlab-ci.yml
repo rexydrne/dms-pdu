@@ -35,28 +35,33 @@ build_app:
       - vendor/
 
 # ---------- TEST ----------
-unit_test_app:
-  stage: test
-  only:
-    - main
-  image: laravelsail/php82-composer:latest
-  services:
-    - mysql:latest
-  variables:
-    MYSQL_DATABASE: test_db
-    MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+unit_test_app: 
+  stage: test 
+  only: 
+    - main 
+  image: laravelsail/php82-composer:latest 
+  services: 
+    - mysql:latest 
+  variables: 
+    MYSQL_DATABASE: test_db 
+    MYSQL_ALLOW_EMPTY_PASSWORD: "yes" 
   script:
     - apt-get update 
-    - apt-get install -y unzip default-mysql-client libpng-dev libzip-dev libonig-dev libxml2-dev
-    - docker-php-ext-install pdo_mysql
-    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-    - composer require --dev phpunit/phpunit
-    - composer install
-    - cp .env.example .env
-    - sed -i 's/DB_HOST=127.0.0.1/DB_HOST=mysql/' .env
-    - php artisan key:generate
-    - php artisan config:cache
-    - php artisan migrate --seed
+    - apt-get install -y unzip default-mysql-client libpng-dev libzip-dev libonig-dev libxml2-dev 
+    - docker-php-ext-install pdo_mysql 
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer 
+    - composer require --dev phpunit/phpunit:"^11" 
+    - composer install 
+    - cp .env.example .env 
+    - sed -i 's/DB_HOST=127.0.0.1/DB_HOST=mysql/' .env 
+    - sed -i 's/DB_DATABASE=.*/DB_DATABASE=test_db/' .env 
+    - sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env 
+    - sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=/' .env 
+    - php artisan key:generate 
+    - php artisan config:cache 
+    - until mysqladmin ping -h mysql --silent; do sleep 1; done
+    - php artisan migrate:fresh --seed   
+    - php artisan permission:cache-reset 
     - php artisan test
 
 # ---------- DEPLOY ----------
