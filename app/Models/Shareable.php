@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class Shareable extends Model
 {
@@ -13,7 +14,7 @@ class Shareable extends Model
     protected $fillable = [
         'file_id',
         'shared_to',
-        'permission_id',
+        'role_id',
         'shared_by',
     ];
 
@@ -27,8 +28,8 @@ class Shareable extends Model
         return $this->belongsTo(User::class, 'shared_to');
     }
 
-    public function permission()
+    public function role()
     {
-        return $this->belongsTo(Permission::class, 'permission_id');
+        return $this->belongsTo(Role::class, 'role_id');
     }
 }

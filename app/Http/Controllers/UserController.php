@@ -165,77 +165,6 @@ class UserController extends Controller
         }
     }
 
-    // public function login(Request $request){
-    //     try {
-    //         $messages = [
-    //             'email.required' => 'The email field is required',
-    //             'email.email' => 'The email must be a valid email address',
-    //             'email.exists' => 'The selected email is invalid',
-    //         ];
-
-    //         $validator = Validator::make(
-    //             $request->all(),
-    //             [
-    //                 'email' => 'required|email',
-    //                 'password' => 'required'
-    //             ],
-    //             $messages
-    //         );
-
-    //         if ($validator->fails()){
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => $validator->messages()->first()
-    //             ], 422);
-    //         }
-
-    //         $user = User::where('email', $request['email'])->first();
-
-    //         if (!$user) {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => 'Email not found.'
-    //             ], 401);
-    //         }
-
-    //         if (!Hash::check($request['password'], $user->password)) {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => 'Incorrect password, please insert the correct password.'
-    //             ], 401);
-    //         }
-
-    //         $credentials = $request->only('email', 'password');
-
-    //         if (Auth::attempt($credentials)) {
-    //             $request->session()->regenerate();
-
-    //             return response()->json([
-    //                 'status' => 'success',
-    //                 'message' => 'Login successful',
-    //                 'user' => Auth::user(),
-    //             ], 200);
-    //         }
-
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Invalid credentials. Please check your email or password.'
-    //         ], 401);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Validasi gagal',
-    //             'errors' => $e->errors()
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Terjadi error saat login',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
     public function login(Request $request){
         try {
             $messages = [
@@ -244,55 +173,32 @@ class UserController extends Controller
                 'email.exists' => 'The selected email is invalid',
             ];
 
-            $validator = Validator::make(
-                $request->all(),
-                [
-                    'email' => 'required|email',
-                    'password' => 'required'
-                ],
-                $messages
-            );
+            $credentials = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
 
-            if ($validator->fails()){
+            if (Auth::attempt($credentials)) {
+                $request->session()->regenerate();
+
                 return response()->json([
-                    'success' => false,
-                    'message' => $validator->messages()->first()
-                ], 422);
+                    'status' => 'success',
+                    'message' => 'Login successful',
+                    'user' => Auth::user(),
+                ], 200);
             }
-
-            $user = User::where('email', $request['email'])->first();
-
-            if (!$user) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Email not found.'
-                ], 401);
-            }
-
-            if (!Hash::check($request['password'], $user->password)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Incorrect password, please insert the correct password.'
-                ], 401);
-            }
-
-            $token = $user->createToken($user->name . '-AuthToken')->plainTextToken;
 
             return response()->json([
-                'status' => 'success',
-                'access_token' => $token
-            ], 200);
-        }
-
-        catch (ValidationException $e) {
+                'status' => 'error',
+                'message' => 'Invalid credentials. Please check your email or password.'
+            ], 401);
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validasi gagal',
                 'errors' => $e->errors()
             ], 422);
-        }
-
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi error saat login',
@@ -300,7 +206,6 @@ class UserController extends Controller
             ], 500);
         }
     }
-
 
     public function updateUserProfile(Request $request){
         try {

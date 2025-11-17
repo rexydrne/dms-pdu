@@ -9,9 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Contracts\Role;
 
-// Route::get('/csrf-cookie', function () {
-//     return response()->json(['message' => 'CSRF cookie set']);
-// });
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -54,6 +51,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/update-share/{share_id}', [ShareController::class, 'update']);
     Route::delete('/remove-share/{share_id}', [ShareController::class, 'destroy']);
 
+    Route::get('/share/{token}', [ShareController::class, 'accessSharedFile'])
+    ->name('file.share');
+
     Route::get('/labels', [LabelController::class, 'index']);
     Route::get('/label/{labelId}', [LabelController::class, 'show']);
     Route::post('/create-label', [LabelController::class, 'store']);
@@ -72,5 +72,7 @@ Route::post('/forgot-password', [UserController::class, 'sendResetToken']);
 Route::post('/verify-token', [UserController::class, 'verifyToken']);
 Route::post('/reset-password', [UserController::class, 'resetPassword']);
 
-Route::get('/share/{token}', [ShareController::class, 'accessSharedFile'])
-    ->name('file.share');
+Route::get('/s/{token}', [ShareController::class, 'viewFilePublic'])
+    ->name('file.share.public');
+
+
