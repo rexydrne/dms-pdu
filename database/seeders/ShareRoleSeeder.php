@@ -13,9 +13,9 @@ class ShareRoleSeeder extends Seeder
      */
     public function run(): void
     {
-        Role::create(['name' => 'receiver']);
+        Role::create(['name' => 'receiver', 'guard_name' => 'api']);
 
-        $roleReceiver = Role::findByName('receiver');
+        $roleReceiver = Role::findByName('receiver', 'api');
         $roleReceiver -> givePermissionTo('edit-file');
         $roleReceiver -> givePermissionTo('view-file');
 
