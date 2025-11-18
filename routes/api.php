@@ -22,6 +22,8 @@ Route::get('/test', function() {
 
 Route::post('/register-user', [UserController::class, 'register']);
 Route::post('/login-user', [UserController::class, 'login']);
+// Route::get( '/unauthenticated', [UserController::class, 'unauthenticated'])->name('login');
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [FileController::class, 'getDashboardData']);
