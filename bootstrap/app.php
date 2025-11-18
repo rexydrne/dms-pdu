@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,34 +16,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->group('api', [
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            StartSession::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        ]);
-
-        // $middleware->group('web', [
-        //     \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-        //     \Illuminate\Session\Middleware\StartSession::class,
-        //     \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-        //     \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        // ]);
-
-        // $middleware->use([
-        //     \Illuminate\Http\Middleware\HandleCors::class,
-        // ]);
-
-        // $middleware->append(StartSession::class);
-        // $middleware->statefulApi();
-    })
-    ->withExceptions(function (Exceptions $exceptions): void {
         //
     })
-    ->booting(function () {
-        RateLimiter::for('api', function ($request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (AuthenticationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: token not found! Please login to continue.',
+                ], 401);
+            }
         });
+    })
+    ->booting(function () {
+        //
     })->create();

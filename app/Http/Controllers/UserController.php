@@ -173,32 +173,55 @@ class UserController extends Controller
                 'email.exists' => 'The selected email is invalid',
             ];
 
-            $credentials = $request->validate([
-                'email' => 'required|email',
-                'password' => 'required',
-            ]);
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'email' => 'required|email',
+                    'password' => 'required'
+                ],
+                $messages
+            );
 
-            if (Auth::attempt($credentials)) {
-                $request->session()->regenerate();
-
+            if ($validator->fails()){
                 return response()->json([
-                    'status' => 'success',
-                    'message' => 'Login successful',
-                    'user' => Auth::user(),
-                ], 200);
+                    'success' => false,
+                    'message' => $validator->messages()->first()
+                ], 422);
             }
 
+            $user = User::where('email', $request['email'])->first();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Email not found.'
+                ], 401);
+            }
+
+            if (!Hash::check($request['password'], $user->password)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Incorrect password, please insert the correct password.'
+                ], 401);
+            }
+
+            $token = $user->createToken($user->name . '-AuthToken', ['*'], now()->addMinutes(120))->plainTextToken;
+
             return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid credentials. Please check your email or password.'
-            ], 401);
-        } catch (ValidationException $e) {
+                'status' => 'success',
+                'access_token' => $token
+            ], 200);
+        }
+
+        catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validasi gagal',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
+        }
+
+        catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi error saat login',
@@ -206,6 +229,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
     public function updateUserProfile(Request $request){
         try {
