@@ -26,7 +26,8 @@ Route::post('/login-user', [UserController::class, 'login']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/dashboard', [FileController::class, 'getDashboardData']);
+    Route::get('/last-opened-files', [FileController::class, 'lastOpenedFiles']);
+    Route::get('/recommended-files', [FileController::class, 'recommendedFiles']);
     Route::patch('/update-profile', [UserController::class, 'updateUserProfile']);
     Route::post('/logout-user', [UserController::class, 'logout']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
@@ -36,11 +37,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/create-folder', [FileController::class, 'createFolder']);
     Route::post('/upload-files', [FileController::class, 'store']);
     Route::patch('/update-file/{fileId}', [FileController::class, 'update']);
-    Route::delete('/delete-file', [FileController::class, 'destroy']);
+    Route::delete('/delete-file/{fileId}', [FileController::class, 'destroy']);
     Route::get('view-file/{fileId}', [FileController::class, 'viewFile'])->name('file.view');
     Route::post('/download', [FileController::class, 'download']);
     Route::get('/storage-file', [FileController::class, 'serveStorageFile']);
     Route::get('/file-info/{fileId}', [FileController::class, 'getFileInfo']);
+    Route::post('/duplicate-file', [FileController::class, 'duplicate']);
 
     Route::get('/trash', [FileController::class, 'trash']);
     Route::post('/restore-file', [FileController::class, 'restore']);

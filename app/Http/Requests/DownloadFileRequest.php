@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class FilesActionRequest extends ParentIdBaseRequest
+class DownloadFileRequest extends ParentIdBaseRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -33,7 +33,7 @@ class FilesActionRequest extends ParentIdBaseRequest
                         ->first();
 
                     if (!$file) {
-                        $fail('Invalid ID "' . $id . '"');
+                        $fail('You do not have permission to download this file (ID: "' . $id . '")');
                     }
                 }
             ]
