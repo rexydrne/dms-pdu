@@ -32,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout-user', [UserController::class, 'logout']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
     Route::post('/delete-photo-profile', [UserController::class, 'deletePhotoProfile']);
+    Route::get('/email/resend', [UserController::class, 'resendVerificationEmail'])
+        ->name('verification.resend');
 
     Route::get('/my-files/{folderId?}', [FileController::class, 'myFiles'])->whereNumber('folderId');
     Route::post('/create-folder', [FileController::class, 'createFolder']);
@@ -68,9 +70,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('email/verify/{id}/{hash}', [UserController::class, 'verifyEmail'])
     ->name('verification.verify');
-
-Route::get('email/resend', [UserController::class, 'resendVerificationEmail'])
-    ->name('verification.resend');
 
 Route::post('/forgot-password', [UserController::class, 'sendResetToken']);
 Route::post('/verify-token', [UserController::class, 'verifyToken']);
