@@ -71,7 +71,7 @@ class UserController extends Controller
                 $user->sendEmailVerificationNotification();
 
                 try {
-                    $user->assignRole('admin', 'api');
+                    $user->assignRole('admin');
                 } catch (RoleDoesNotExist $e) {
                     throw new \Exception('Role "admin" does not exist.' . $e->getMessage());
                 }
@@ -547,10 +547,7 @@ class UserController extends Controller
                 ], 401);
             }
 
-            Auth::guard('web')->logout();
-
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            $user->currentAccessToken()->delete();
 
             return response()->json([
                 'status' => 'success',
@@ -565,4 +562,5 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 }
