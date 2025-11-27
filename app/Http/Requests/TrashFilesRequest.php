@@ -2,20 +2,11 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class TrashFilesRequest extends FormRequest
+class TrashFilesRequest extends BaseMassActionRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -23,11 +14,13 @@ class TrashFilesRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'all' => 'nullable|bool',
-            'ids.*' => Rule::exists('files', 'id')->where(function ($query) {
-                $query->where('created_by', Auth::id());
-            })
-        ];
+        return array_merge(parent::rules(), [
+            'ids.*' => [
+                'integer',
+                Rule::exists('files', 'id')->where(function ($query) {
+                    $query->where('created_by', Auth::id());
+                })
+            ]
+        ]);
     }
 }

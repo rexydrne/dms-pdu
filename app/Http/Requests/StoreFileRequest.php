@@ -3,10 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Models\File;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
-class StoreFileRequest extends ParentIdBaseRequest
+class StoreFileRequest extends BaseFileRequest
 {
     protected function prepareForValidation()
     {

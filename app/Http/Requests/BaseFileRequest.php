@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class ParentIdBaseRequest extends FormRequest
+class BaseFileRequest extends FormRequest
 {
     public ?File $parent = null;
 
@@ -17,10 +17,12 @@ class ParentIdBaseRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $this->parent = File::query()->where('id', $this->input('parent_id'))->first();
+        if ($this->input('parent_id')) {
+            $this->parent = File::query()->where('id', $this->input('parent_id'))->first();
 
-        if ($this->parent && !$this->parent->isOwnedBy(Auth::id())) {
-            return false;
+            if ($this->parent && !$this->parent->isOwnedBy(Auth::id())) {
+                return false;
+            }
         }
         return true;
     }
@@ -34,6 +36,7 @@ class ParentIdBaseRequest extends FormRequest
     {
         return [
             'parent_id' => [
+                'nullable',
                 Rule::exists(File::class, 'id')
                     ->where(function (Builder $query) {
                         return $query

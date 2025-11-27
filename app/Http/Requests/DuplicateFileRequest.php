@@ -14,14 +14,7 @@ class DuplicateFileRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $file = File::find($this->input('file_id'));
-
-        if (!$file) {
-            return false;
-        }
-
-        return $file->isOwnedBy(Auth::id()) ||
-               $file->shareables()->where('shared_to', Auth::id())->exists();
+        return Auth::check();
     }
 
     /**
@@ -32,8 +25,14 @@ class DuplicateFileRequest extends FormRequest
         return [
             'file_id' => [
                 'required',
-                Rule::exists('files', 'id')
-                    ->whereNull('deleted_at')
+                Rule::exists('files', 'id')->whereNull('deleted_at'),
+                function ($attribute, $id, $fail) {
+                     $file = File::find($id);
+
+                    if (!$file || (!$file->isOwnedBy(Auth::id()) && !$file->shareables()->where('shared_to', Auth::id())->exists())) {
+                        $fail('You do not have permission to duplicate this file (ID: "' . $id . '")');
+                    }
+                }
             ],
         ];
     }

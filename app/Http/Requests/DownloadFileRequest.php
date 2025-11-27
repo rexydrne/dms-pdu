@@ -3,11 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Models\File;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class DownloadFileRequest extends ParentIdBaseRequest
+class DownloadFileRequest extends BaseMassActionRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -16,8 +15,7 @@ class DownloadFileRequest extends ParentIdBaseRequest
      */
     public function rules(): array
     {
-        return array_merge(parent::rules(), [
-            'all' => 'nullable|bool',
+        return array_merge(parent::except(['ids.*']), [
             'ids.*' => [
                 Rule::exists('files', 'id'),
 
@@ -26,7 +24,6 @@ class DownloadFileRequest extends ParentIdBaseRequest
                         ->leftJoin('shareables', 'shareables.file_id', 'files.id')
                         ->where('files.id', $id)
                         ->where(function ($query) {
-                            /** @var $query \Illuminate\Database\Query\Builder */
                             $query->where('files.created_by', Auth::id())
                                 ->orWhere('shareables.shared_to', Auth::id());
                         })

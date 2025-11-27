@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\File;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFileRequest extends FormRequest
@@ -42,7 +43,7 @@ class UpdateFileRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->route('fileId')) {
-            $this->merge(['file' => \App\Models\File::findOrFail($this->route('fileId'))]);
+            $this->merge(['file' => File::findOrFail($this->route('fileId'))]);
         }
     }
 

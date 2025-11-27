@@ -7,8 +7,16 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class DeleteFileRequest extends ParentIdBaseRequest
+class DeleteFileRequest extends FormRequest
 {
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return Auth::check();
+    }
+
      /**
      * Prepare the data for validation.
      */
@@ -34,12 +42,7 @@ class DeleteFileRequest extends ParentIdBaseRequest
                 function ($attribute, $id, $fail) {
                     $file = File::find($id);
 
-                    if (!$file) {
-                        $fail('File not found (ID: "' . $id . '")');
-                        return;
-                    }
-
-                    if (!$file->isOwnedBy(Auth::id())) {
+                    if ($file && !$file->isOwnedBy(Auth::id())) {
                         $fail('You can only delete files that you own (ID: "' . $id . '")');
                     }
                 }

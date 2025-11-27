@@ -4,11 +4,10 @@ namespace App\Http\Requests;
 
 use App\Models\File;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class StoreFolderRequest extends ParentIdBaseRequest
+class StoreFolderRequest extends BaseFileRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -19,7 +18,7 @@ class StoreFolderRequest extends ParentIdBaseRequest
     public function rules(): array
     {
         return array_merge(parent::rules(), [
-            'name' => ['required', 'string'],
+            'name' => ['required', 'string', 'max:255'],
         ]);
     }
 

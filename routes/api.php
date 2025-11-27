@@ -4,6 +4,9 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\ShareController;
+use App\Http\Controllers\TrashController;
+use App\Http\Controllers\LastOpenedController;
+use App\Http\Controllers\RecommendedController;
 use App\Models\Shareable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,8 +29,8 @@ Route::post('/login-user', [UserController::class, 'login']);
 Route::get('/search-users', [UserController::class, 'searchUsers']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/last-opened-files', [FileController::class, 'lastOpenedFiles']);
-    Route::get('/recommended-files', [FileController::class, 'recommendedFiles']);
+    Route::get('/last-opened-files', [LastOpenedController::class, 'lastOpenedFiles']);
+    Route::get('/recommended-files', [RecommendedController::class, 'recommendedFiles']);
     Route::patch('/update-profile', [UserController::class, 'updateUserProfile']);
     Route::post('/logout-user', [UserController::class, 'logout']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
@@ -46,9 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/file-info/{fileId}', [FileController::class, 'getFileInfo']);
     Route::post('/duplicate-file', [FileController::class, 'duplicate']);
 
-    Route::get('/trash', [FileController::class, 'trash']);
-    Route::post('/restore-file', [FileController::class, 'restore']);
-    Route::delete('/force-delete-file', [FileController::class, 'forceDestroy']);
+    Route::get('/trash', [TrashController::class, 'trash']);
+    Route::post('/restore-file', [TrashController::class, 'restore']);
+    Route::delete('/force-delete-file', [TrashController::class, 'forceDestroy']);
 
     Route::post('/share-file/{file_id}', [ShareController::class, 'store']);
     Route::get('/shared-file/{file_id}', [ShareController::class, 'index']);

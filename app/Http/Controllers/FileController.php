@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\DownloadFileRequest;
-use App\Http\Requests\TrashFilesRequest;
-use App\Http\Requests\ForceDeleteFilesRequest;
 use App\Http\Requests\DeleteFileRequest;
 use App\Http\Requests\StoreFileRequest;
 use App\Http\Requests\StoreFolderRequest;
@@ -49,7 +47,6 @@ class FileController extends Controller
                 $this->trackAccess((int)$folderId, Auth::id());
             } else {
                 $folder = $this->getRoot();
-                $this->trackAccess((int)$folder->id, Auth::id());
             }
 
             $query = File::query()
@@ -88,31 +85,17 @@ class FileController extends Controller
 
     private function trackAccess(int $fileId, int $userId): void
     {
+        $file = File::find($fileId);
+
+        if(! $file || $file->isRoot()) {
+            return;
+        }
+
         FileAccessLog::updateOrCreate(
             ['user_id' => $userId, 'file_id' => $fileId],
             ['last_accessed_at' => now()]
         );
     }
-
-    public function trash(Request $request)
-    {
-        $search = $request->get('search');
-
-        $query = File::onlyTrashed()
-            ->where('created_by', Auth::id())
-            ->orderBy('is_folder', 'desc')
-            ->orderBy('deleted_at', 'desc')
-            ->orderBy('files.id', 'desc');
-
-        if ($search) {
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        $files = $query->paginate(10);
-
-        return FileResource::collection($files);
-    }
-
 
     public function createFolder(StoreFolderRequest $request)
     {
@@ -279,6 +262,8 @@ class FileController extends Controller
 
             $file->save();
 
+            $this->trackAccess((int)$file->id, Auth::id());
+
             $updatedFile = File::query()->where('id', $file->id)->with('labels')->first();
 
             return response()->json([
@@ -299,31 +284,6 @@ class FileController extends Controller
         }
     }
 
-    // public function destroy(FilesActionRequest $request)
-    // {
-    //     $data = $request->validated();
-    //     $parent = $request->parent;
-
-    //     if ($data['all']) {
-    //         $children = $parent->children;
-    //         foreach ($children as $child) {
-    //             $child->moveToTrashWithDescendants();
-    //         }
-    //     } else {
-    //         foreach ($data['ids'] ?? [] as $id) {
-    //             $file = File::find($id);
-    //             if ($file) {
-    //                 $file->moveToTrashWithDescendants();
-    //             }
-    //         }
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'File(s)/folder(s) moved to trash successfully.',
-    //     ]);
-    // }
-
     public function destroy(DeleteFileRequest $request, string $fileId)
     {
         $data = $request->validated();
@@ -336,53 +296,6 @@ class FileController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'File(s)/folder(s) moved to trash successfully.',
-        ]);
-    }
-
-    public function restore(TrashFilesRequest $request)
-    {
-        $data = $request->validated();
-
-        if ($data['all']) {
-            $children = File::onlyTrashed()
-                ->with('parent')
-                ->where('created_by', Auth::id())
-                ->get();
-        } else {
-            $ids = $data['ids'] ?? [];
-
-            $children = File::onlyTrashed()
-                ->with('parent')
-                ->whereIn('id', $ids)
-                ->where('created_by', Auth::id())
-                ->get();
-
-            foreach ($children as $child) {
-                $parent = $child->parent;
-                while ($parent && $parent->trashed()) {
-                    $parent->restore();
-                    $parent = $parent->parent;
-                }
-
-                $child->name = FileHelper::generateUniqueName(
-                    $child->name,
-                    $child->parent_id,
-                    Auth::id()
-                );
-
-                $child->restore();
-
-                if ($child->is_folder) {
-                    File::onlyTrashed()
-                        ->whereDescendantOf($child)
-                        ->update(['deleted_at' => null]);
-                }
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'File(s) restored successfully.',
         ]);
     }
 
@@ -418,60 +331,6 @@ class FileController extends Controller
         }
 
         return Storage::disk('public')->response($path);
-    }
-
-    public function forceDestroy(ForceDeleteFilesRequest $request)
-    {
-        $data = $request->validated();
-
-        if (!empty($data['all'])) {
-            $files = File::onlyTrashed()
-                ->leftJoin('shareables', 'shareables.file_id', 'files.id')
-                ->where(function ($q) {
-                    $q->where('files.created_by', Auth::id())
-                        ->orWhere('shareables.user_id', Auth::id());
-                })
-                ->select('files.*')
-                ->orderBy('_lft', 'desc')
-                ->get();
-        } else {
-            $ids = $data['ids'] ?? [];
-            $files = File::onlyTrashed()
-                ->whereIn('id', $ids)
-                ->orderBy('_lft', 'desc')
-                ->get();
-        }
-
-        foreach ($files as $file) {
-            try {
-                if ($file->is_folder) {
-                    $descendants = File::onlyTrashed()
-                        ->whereDescendantOf($file)
-                        ->orderBy('_lft', 'desc')
-                        ->get();
-
-                    foreach ($descendants as $desc) {
-                        if (! $desc->is_folder && $desc->storage_path && Storage::disk('public')->exists($desc->storage_path)) {
-                            Storage::disk('public')->delete($desc->storage_path);
-                        }
-                        $desc->forceDelete();
-                    }
-                }
-
-                if (! $file->is_folder && $file->storage_path && Storage::disk('public')->exists($file->storage_path)) {
-                    Storage::disk('public')->delete($file->storage_path);
-                }
-
-                $file->forceDelete();
-            } catch (Exception $e) {
-                Log::error("Failed to permanently delete file id {$file->id}: {$e->getMessage()}");
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'File(s) permanently deleted.',
-        ]);
     }
 
     public function download(DownloadFileRequest $request)
@@ -715,56 +574,6 @@ class FileController extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function lastOpenedFiles()
-    {
-        $userId = Auth::id();
-
-        $lastOpenedLogs = \DB::table('file_access_logs')
-            ->where('file_access_logs.user_id', $userId)
-            ->join('files', 'files.id', '=', 'file_access_logs.file_id')
-            ->whereNull('files.deleted_at')
-            ->orderBy('file_access_logs.last_accessed_at', 'desc')
-            ->limit(12)
-            ->select('files.*', 'file_access_logs.last_accessed_at')
-            ->get();
-
-        $lastOpenedLogs = File::hydrate($lastOpenedLogs->toArray());
-        $lastOpenedLogs = $lastOpenedLogs->each(function (File $file) use ($lastOpenedLogs) {
-            $log = $lastOpenedLogs->firstWhere('id', $file->id);
-            $file->last_accessed_at = $log ? $log->last_accessed_at : null;
-        });
-
-        $lastOpenedFolders = $lastOpenedLogs->where('is_folder', true)->take(6);
-        $lastOpenedFiles = $lastOpenedLogs->where('is_folder', false)->take(6);
-
-        return response()->json([
-            'last_opened_folders' => FileResource::collection($lastOpenedFolders),
-            'last_opened_files'   => FileResource::collection($lastOpenedFiles),
-        ]);
-    }
-
-    public function recommendedFiles()
-    {
-        $userId = Auth::id();
-
-        $recommendedFiles = File::query()
-            ->select('files.*', \DB::raw('COUNT(log.id) as access_count'))
-            ->join('file_access_logs as log', 'log.file_id', '=', 'files.id')
-            ->where('files.created_by', $userId)
-            ->where('log.user_id', $userId)
-            ->where('files.is_folder', false)
-            ->whereNull('files.deleted_at')
-            ->groupBy('files.id')
-            ->orderByDesc('access_count')
-            ->orderByDesc('files.updated_at')
-            ->limit(5)
-            ->get();
-
-        return response()->json([
-            'recommended_files'   => FileResource::collection($recommendedFiles),
-        ]);
     }
 
     public function duplicate(DuplicateFileRequest $request)
