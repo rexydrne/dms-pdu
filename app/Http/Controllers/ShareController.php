@@ -295,8 +295,20 @@ class ShareController extends Controller
 
         $file = File::findOrFail($share->file_id);
 
-        return redirect()->to("https://dms-pdu-production.up.railway.app/file-view/{$file_id}");
-        // return redirect()->to("http://127.0.0.1:3000/file-view/{$file_id}");
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'file_id' => $file->id,
+                'file_name' => $file->name,
+                'file_path' => $file->path,
+                'shared_by' => [
+                    'id' => $file->user->id,
+                    'name' => $file->user->fullname,
+                    'email' => $file->user->email,
+                ],
+                'role' => Permission::find($share->role_id)->name,
+            ]
+        ]);
     }
 
 
