@@ -536,7 +536,7 @@ class FileController extends Controller
             $this->trackAccess((int)$fileId, Auth::id());
             $ancestors = $file->ancestors()->get();
 
-            $shares = $file->shareables->map(function ($share) {
+            $shares = $file->shareables->map(function ($share) use ($file) {
                 return [
                     'user_id' => $share->user->id,
                     'user_name' => $share->user->fullname,
@@ -564,6 +564,7 @@ class FileController extends Controller
                     'location' => $locationPath,
                     'shares' => $shares,
                     'owner_name' => $file->user->fullname,
+                    "advanced_share" => url('/api/shared-file/'.$file->id),
 
                 ],
             ]);
