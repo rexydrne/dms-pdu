@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Shareable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -20,6 +19,8 @@ use App\Http\Requests\UpdateFileRequest;
 use App\Http\Requests\DuplicateFileRequest;
 use App\Http\Resources\FileResource;
 use App\Models\File;
+use App\Models\Shareable;
+use App\Models\ShareLink;
 use App\Models\FileAccessLog;
 use App\Jobs\UploadFileToCloudJob;
 use App\Helpers\FileHelper;
@@ -529,18 +530,19 @@ class FileController extends Controller
                               $q->where('shared_to', Auth::id());
                           });
                 })
-                ->with(['labels', 'shareables.user', 'shareables.permission', 'user'])
+                ->with(['labels', 'shareables.user', 'shareables.role', 'user'])
                 ->firstOrFail();
 
             $this->trackAccess((int)$fileId, Auth::id());
             $ancestors = $file->ancestors()->get();
 
-            $shares = $file->shareables->map(function ($share) {
+            $shares = $file->shareables->map(function ($share) use ($file) {
                 return [
-                    'user_id' => $share->user_id,
-                    'user_name' => $share->user->name,
+                    'user_id' => $share->user->id,
+                    'user_name' => $share->user->fullname,
                     'user_email' => $share->user->email,
-                    'permission' => $share->permission->name,
+                    'photo_profile_path' => $share->user->photo_profile_path,
+                    'role' => $share->role->name,
                 ];
             });
 
@@ -562,6 +564,7 @@ class FileController extends Controller
                     'location' => $locationPath,
                     'shares' => $shares,
                     'owner_name' => $file->user->fullname,
+                    "advanced_share" => url('/api/shared-file/'.$file->id),
 
                 ],
             ]);
