@@ -87,13 +87,28 @@ class File extends Model
         return $this->parent_id === null;
     }
 
+    public function getCumulativeSize(): int
+    {
+        if (!$this->is_folder) {
+            return $this->size ?? 0;
+        }
+
+        $totalSize = $this->descendants()
+            ->where('is_folder', false)
+            ->sum('size');
+
+        return (int) $totalSize;
+    }
+
     public function get_file_size()
     {
+        $sizeInBytes = $this->is_folder ? $this->getCumulativeSize() : $this->size;
+
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
-        $power = $this->size > 0 ? floor(log($this->size, 1024)) : 0;
+        $power = $sizeInBytes > 0 ? floor(log($sizeInBytes, 1024)) : 0;
 
-        return number_format($this->size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
+        return number_format($sizeInBytes / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
     }
 
     protected static function boot()

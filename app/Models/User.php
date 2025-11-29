@@ -30,6 +30,7 @@ class User extends Authenticatable
         'fullname',
         'email',
         'password',
+        'photo_profile_path'
     ];
 
     protected $guard_name = 'api';

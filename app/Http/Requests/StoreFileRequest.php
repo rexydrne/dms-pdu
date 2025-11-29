@@ -37,6 +37,8 @@ class StoreFileRequest extends BaseFileRequest
             'files.*' => [
                 'required',
                 'file',
+                'mimes:pdf,xlsx,docx,pptx,jpeg,png,jpg,csv',
+                'max:10240',
             ],
             'folder_name' => [
                 'nullable',
