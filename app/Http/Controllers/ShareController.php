@@ -231,27 +231,34 @@ class ShareController extends Controller
                         );
                     }
 
-                    $notifData = [
-                        'file_id' => $file->id,
-                        'file_name' => $file->name,
-                        'shared_name' => $sharedBy->fullname,
-                        'shared_id' => $sharedBy->id,
-                        'shared_to_id' => $targetUser->id,
-                    ];
+                    // $notifData = [
+                    //     'file_id' => $file->id,
+                    //     'file_name' => $file->name,
+                    //     'shared_name' => $sharedBy->fullname,
+                    //     'shared_id' => $sharedBy->id,
+                    //     'shared_to_id' => $targetUser->id,
+                    // ];
 
-                    Log::info('Notify Data: ' . json_encode($notifData));
+                    // Log::info('Notify Data: ' . json_encode($notifData));
 
-                    $receiver = User::find($targetUser->id);
-
-                    if ($shareRecord && $receiver) {
-                        $receiver->notify(new FileSharedNotification($notifData));
-                    }
-
-                    $shareLink = "https://dms-pdu-production.up.railway.app/share/{$shareRecord->token}";
-
-                    Mail::to($targetUser->email)->send(
-                        new FileSharedMail($file, $sharedBy, $targetUser, $shareLink)
+                    \App\Jobs\ProcessFileShareJob::dispatch(
+                        $file,
+                        $sharedBy,
+                        $targetUser,
+                        $shareRecord
                     );
+
+                    // $receiver = User::find($targetUser->id);
+
+                    // if ($shareRecord && $receiver) {
+                    //     $receiver->notify(new FileSharedNotification($notifData));
+                    // }
+
+                    // $shareLink = "https://dms-pdu-production.up.railway.app/share/{$shareRecord->token}";
+
+                    // Mail::to($targetUser->email)->send(
+                    //     new FileSharedMail($file, $sharedBy, $targetUser, $shareLink)
+                    // );
                 }
 
                 return response()->json([
@@ -385,7 +392,7 @@ class ShareController extends Controller
                             'name' => $file->user->fullname,
                             'email' => $file->user->email,
                         ],
-                        'role' => Permission::find($file->pivot->role_id)->name,
+                        'role' => Role::find($file->pivot->role_id)->name,
                     ];
                 });
 
