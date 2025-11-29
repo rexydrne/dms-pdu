@@ -5,9 +5,13 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Database\Eloquent\BroadcastsEvents;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Queue\SerializesModels;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Scout\Searchable;
 use Spatie\Permission\Traits\HasRoles;
@@ -15,7 +19,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens, MustVerifyEmail, Searchable;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens, MustVerifyEmail, Searchable, BroadcastsEvents, Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
      * The attributes that are mass assignable.

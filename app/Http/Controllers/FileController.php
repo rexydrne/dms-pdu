@@ -330,6 +330,8 @@ class FileController extends Controller
             abort(404, 'File tidak ditemukan di server.');
         }
 
+        Log::info("Serving file from storage", ['path' => $path]);
+        
         return Storage::disk('public')->response($path);
     }
 

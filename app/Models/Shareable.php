@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\BroadcastsEvents;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class Shareable extends Model
 {
-
     protected $table = 'shareables';
 
     protected $fillable = [

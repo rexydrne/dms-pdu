@@ -7,7 +7,9 @@ use App\Models\File;
 use App\Models\Shareable;
 use App\Models\ShareLink;
 use App\Models\User;
+use App\Notifications\FileSharedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -229,7 +231,22 @@ class ShareController extends Controller
                         );
                     }
 
-                    // $shareLink = "http://127.0.0.1:3000/share/{$shareRecord->token}";
+                    $notifData = [
+                        'file_id' => $file->id,
+                        'file_name' => $file->name,
+                        'shared_name' => $sharedBy->fullname,
+                        'shared_id' => $sharedBy->id,
+                        'shared_to_id' => $targetUser->id,
+                    ];
+
+                    Log::info('Notify Data: ' . json_encode($notifData));
+
+                    $receiver = User::find($targetUser->id);
+
+                    if ($shareRecord && $receiver) {
+                        $receiver->notify(new FileSharedNotification($notifData));
+                    }
+
                     $shareLink = "https://dms-pdu-production.up.railway.app/share/{$shareRecord->token}";
 
                     Mail::to($targetUser->email)->send(
@@ -301,6 +318,7 @@ class ShareController extends Controller
                 'file_id' => $file->id,
                 'file_name' => $file->name,
                 'file_path' => $file->path,
+                'file_type' => $file->mime,
                 'shared_by' => [
                     'id' => $file->user->id,
                     'name' => $file->user->fullname,

@@ -7,6 +7,7 @@ use App\Http\Controllers\ShareController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\LastOpenedController;
 use App\Http\Controllers\RecommendedController;
+use App\Http\Controllers\ShareNotificationController;
 use App\Models\Shareable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +69,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/create-label', [LabelController::class, 'store']);
     Route::patch('/update-label/{labelId}', [LabelController::class, 'update']);
     Route::delete('/delete-label/{labelId}', [LabelController::class, 'destroy']);
+
+    Route::get('/share-notifications', [ShareNotificationController::class, 'getAllNotifications']);
+    Route::get('/share-notifications/unread', [ShareNotificationController::class, 'getUnreadNotifications']);
+    Route::get('/share-notifications/read', [ShareNotificationController::class, 'getReadNotifications']);
+    Route::post('/share-notifications/mark-as-read/{id}', [ShareNotificationController::class, 'markAsRead']);
 
 });
 
