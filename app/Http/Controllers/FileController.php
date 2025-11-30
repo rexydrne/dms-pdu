@@ -27,11 +27,12 @@ use App\Helpers\FileHelper;
 use Exception;
 use Spatie\Permission\Models\Role;
 use App\Traits\SortableFileQuery;
+use App\Traits\FilterableFileQuery;
 use Illuminate\Database\Eloquent\Builder;
 
 class FileController extends Controller
 {
-    use SortableFileQuery;
+    use SortableFileQuery, FilterableFileQuery;
 
     public function myFiles(Request $request, string $folderId = null)
     {
@@ -74,6 +75,7 @@ class FileController extends Controller
                 $query->where('parent_id', $folder->id);
             }
 
+            $query = $this->applyDmsFiltering($query, $request);
             $query = $this->applyDmsSorting($query, $sortBy);
 
             $files = $query->get();

@@ -8,10 +8,11 @@ use App\Models\FileAccessLog;
 use App\Http\Resources\FileResource;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\SortableFileQuery;
+use App\Traits\FilterableFileQuery;
 
 class LastOpenedController extends Controller
 {
-    use SortableFileQuery;
+    use SortableFileQuery, FilterableFileQuery;
 
     public function lastOpenedFiles(Request $request)
     {
@@ -26,6 +27,8 @@ class LastOpenedController extends Controller
                 ->whereNull('files.deleted_at')
                 ->whereNotNull('files.parent_id')
                 ->select('files.*', 'log.last_accessed_at');
+
+            $query = $this->applyDmsFiltering($query, $request);
 
             // primary sort: last opened first
             $query->orderBy('log.last_accessed_at', 'desc');

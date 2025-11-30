@@ -30,8 +30,9 @@ Route::post('/login-user', [UserController::class, 'login']);
 Route::get('/search-users', [UserController::class, 'searchUsers']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/last-opened-files', [LastOpenedController::class, 'lastOpenedFiles']);
     Route::get('/recommended-files', [RecommendedController::class, 'recommendedFiles']);
+    Route::get('/last-opened-files', [LastOpenedController::class, 'lastOpenedFiles']);
+    Route::get('/my-files/{folderId?}', [FileController::class, 'myFiles'])->whereNumber('folderId');
     Route::patch('/update-profile', [UserController::class, 'updateUserProfile']);
     Route::post('/logout-user', [UserController::class, 'logout']);
     Route::post('/change-password', [UserController::class, 'changePassword']);
@@ -39,7 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/email/resend', [UserController::class, 'resendVerificationEmail'])
         ->name('verification.resend');
 
-    Route::get('/my-files/{folderId?}', [FileController::class, 'myFiles'])->whereNumber('folderId');
     Route::post('/create-folder', [FileController::class, 'createFolder']);
     Route::post('/upload-files', [FileController::class, 'store']);
     Route::patch('/update-file/{fileId}', [FileController::class, 'update']);
