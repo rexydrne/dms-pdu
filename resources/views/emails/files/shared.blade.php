@@ -1,10 +1,10 @@
 <x-mail::message>
 # 📁 A File Has Been Shared With You
 
-Hello {{ $sharedTo->name ?? 'there' }},
+Hello {{ $sharedTo->fullname ?? 'there' }},
 
-{{ $sharedBy->name }} has shared a file with you:
-**{{ $file->fullname }}**
+{{ $sharedBy->fullname }} has shared a file with you:
+**{{ $file->name }}**
 
 You can view or download the file using the button below:
 
