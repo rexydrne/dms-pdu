@@ -4,7 +4,7 @@
 Hello {{ $sharedTo->name ?? 'there' }},
 
 {{ $sharedBy->name }} has shared a file with you:
-**{{ $file->name }}**
+**{{ $file->fullname }}**
 
 You can view or download the file using the button below:
 
