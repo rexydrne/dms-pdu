@@ -7,10 +7,11 @@ use App\Models\File;
 use App\Http\Resources\FileResource;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\SortableFileQuery;
+use App\Traits\FilterableFileQuery;
 
 class RecommendedController extends Controller
 {
-    use SortableFileQuery;
+    use SortableFileQuery, FilterableFileQuery;
 
     public function recommendedFiles(Request $request)
     {
@@ -27,6 +28,8 @@ class RecommendedController extends Controller
                 ->whereNull('files.deleted_at')
                 ->groupBy('files.id')
                 ->with('labels');
+
+            $query = $this->applyDmsFiltering($query, $request);
 
             // primary sort: most accessed first
             $query->orderByDesc('access_count');

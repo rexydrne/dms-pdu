@@ -27,10 +27,12 @@ use App\Helpers\FileHelper;
 use Exception;
 use Spatie\Permission\Models\Role;
 use App\Traits\SortableFileQuery;
+use App\Traits\FilterableFileQuery;
+use Illuminate\Database\Eloquent\Builder;
 
 class FileController extends Controller
 {
-    use SortableFileQuery;
+    use SortableFileQuery, FilterableFileQuery;
 
     public function myFiles(Request $request, string $folderId = null)
     {
@@ -45,10 +47,18 @@ class FileController extends Controller
             $sortBy = $request->get('sort');
 
             if ($folderId) {
+                $userId = Auth::id();
+
                 $folder = File::query()
-                    ->where('created_by', Auth::id())
                     ->where('id', $folderId)
+                    ->where(function (Builder $query) use ($userId) {
+                        $query->where('created_by', $userId)
+                            ->orWhereHas('shareables', function (Builder $q) use ($userId) {
+                                $q->where('shared_to', $userId);
+                            });
+                    })
                     ->firstOrFail();
+
                 $this->trackAccess((int)$folderId, Auth::id());
             } else {
                 $folder = $this->getRoot();
@@ -56,7 +66,6 @@ class FileController extends Controller
 
             $query = File::query()
                 ->select('files.*')
-                ->where('created_by', Auth::id())
                 ->where('_lft', '!=', 1)
                 ->with('labels');
 
@@ -66,6 +75,7 @@ class FileController extends Controller
                 $query->where('parent_id', $folder->id);
             }
 
+            $query = $this->applyDmsFiltering($query, $request);
             $query = $this->applyDmsSorting($query, $sortBy);
 
             $files = $query->get();
@@ -331,11 +341,11 @@ class FileController extends Controller
         $path = $fileRecord->storage_path;
 
         if (!Storage::disk('public')->exists($path)) {
-            abort(404, 'File tidak ditemukan di server.');
+            abort(404, 'File is not found in server.');
         }
 
         Log::info("Serving file from storage", ['path' => $path]);
-        
+
         return Storage::disk('public')->response($path);
     }
 

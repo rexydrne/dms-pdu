@@ -72,7 +72,7 @@ class File extends Model
     {
         return Attribute::make(
             get: function (mixed $value, array $attributes) {
-                return $attributes['created_by'] == Auth::id() ? 'me' : $this->user->name;
+                return $attributes['created_by'] == Auth::id() ? 'me' : $this->user->fullname;
             }
         );
     }
