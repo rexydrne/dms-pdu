@@ -51,7 +51,7 @@ class LabelController extends Controller
     {
         try{
             $request->validate([
-                'name' => 'required|string|unique|max:255',
+                'name' => 'required|string|unique:labels,name|max:255',
                 'color' => 'required|string|max:255',
             ]);
 

@@ -152,7 +152,30 @@ class UserController extends Controller
     }
 
 
-
+    /**
+     * @OA\Get(
+     *     path="/api/email/verify/{id}/{hash}",
+     *     summary="Verify user email",
+     *     tags={"Verification"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Email already verified.",
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to verify email"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid verification link."
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found."
+     *     ),
+     * )
+    */
     public function verifyEmail(Request $request, $id, $hash)
     {
         try {
@@ -188,6 +211,22 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/email/resend",
+     *     summary="Resend verify user email",
+     *     tags={"Verification"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Email already verified.",
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to resend verification email:"
+     *     )
+     * )
+    */
     public function resendVerificationEmail(Request $request)
     {
         try {
@@ -301,7 +340,7 @@ class UserController extends Controller
 
 
     /**
-     * @OA\Post(
+     * @OA\Patch(
      *     path="/api/user/update-profile",
      *     summary="Update user profile",
      *     tags={"Users"},
@@ -383,6 +422,26 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/user/delete-photo-profile",
+     *     summary="Delete user photo profile",
+     *     tags={"Users"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile photo deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="No profile photo to delete"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="An error occurred while deleting the profile photo"
+     *     ),
+     * )
+    */
     public function deletePhotoProfile(Request $request){
         try {
             $user = $request->user();
@@ -429,7 +488,11 @@ class UserController extends Controller
      *     @OA\Response(
      *         response=422,
      *         description="Validation failed"
-     *     )
+     *     ),
+     *     @OA\Response(
+     *        response=500,
+     *        description="An error occurred while processing the request"
+     *     ),
      * )
      */
 
@@ -512,6 +575,33 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/password/verify-token",
+     *     summary="Verify OTP token",
+     *     tags={"Password"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             required={"email","token"},
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="token", type="string", example="1234")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token is valid. Token verified successfully."
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Ivalid Token"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Email not found"
+     *     ),
+     * )
+    */
+
     public function verifyToken(Request $request){
         $messages = [
             'email.required' => 'The email field is required',
@@ -529,6 +619,7 @@ class UserController extends Controller
             ],
             $messages
         );
+        
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -563,6 +654,31 @@ class UserController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/password/reset",
+     *     summary="Reset user password",
+     *     tags={"Password"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             required={"email","token","password","password_confirmation"},
+     *             @OA\Property(property="email", type="string"),
+     *             @OA\Property(property="token", type="string"),
+     *             @OA\Property(property="password", type="string", format="password"),
+     *             @OA\Property(property="password_confirmation", type="string", format="password")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password reset successful"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to reset password"
+     *     ),
+     * )
+    */
+
     public function resetPassword(Request $request){
         try {
             $request->validate([
@@ -596,11 +712,38 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => true,
-                'message' => $e->getMessage(),
+                'message' => 'Failed to reset password with error: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/change-password",
+     *     summary="Change user password",
+     *     tags={"Password"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             required={"current_password", "new_password", "new_password_confirmation"},
+     *             @OA\Property(property="current_password", type="string", format="password"),
+     *             @OA\Property(property="new_password", type="string", format="password"),
+     *             @OA\Property(property="new_password_confirmation", type="string", format="password")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password updated successfully. Please log in again with your new password."
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="An error occurred while updating the password"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Current password is incorrect"
+     *     ),
+     * )
+    */
     public function changePassword(Request $request){
         try {
             $request->validate([
@@ -634,6 +777,32 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/search-users",
+     *     summary="Search users by email",
+     *     tags={"Users"},
+     *     @OA\Parameter(
+     *         name="q",
+     *         in="query",
+     *         description="Email search query",
+     *         required=true,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(ref="#/components/schemas/User")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to search users"
+     *     )
+     * )
+    */
     public function searchUsers(Request $request){
         try {
             $query = $request->input('q');
@@ -654,6 +823,19 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/logout",
+     *     summary="Logout user",
+     *     tags={"Authentication"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successfully logged out"
+     *     )
+     * )
+    */
 
     public function logout(Request $request){
         try {
