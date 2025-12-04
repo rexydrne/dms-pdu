@@ -14,6 +14,40 @@ class LastOpenedController extends Controller
 {
     use SortableFileQuery, FilterableFileQuery;
 
+    /**
+     * @OA\Get(
+     *     path="/api/last-opened-files",
+     *     summary="Get recently opened files and folders",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="sort",
+     *         in="query",
+     *         required=false,
+     *         description="Sort parameter",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="last_opened_folders", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="last_opened_files", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
     public function lastOpenedFiles(Request $request)
     {
         $userId = Auth::id();

@@ -13,6 +13,39 @@ class RecommendedController extends Controller
 {
     use SortableFileQuery, FilterableFileQuery;
 
+    /**
+     * @OA\Get(
+     *     path="/api/recommended-files",
+     *     summary="Get recommended files based on access frequency",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="sort",
+     *         in="query",
+     *         required=false,
+     *         description="Sort parameter",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="recommended_files", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
     public function recommendedFiles(Request $request)
     {
         $userId = Auth::id();

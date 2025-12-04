@@ -34,6 +34,53 @@ class FileController extends Controller
 {
     use SortableFileQuery, FilterableFileQuery;
 
+    /**
+     * @OA\Get(
+     *     path="/api/my-files/{folderId?}",
+     *     summary="Get user's files and folders",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="folderId",
+     *         in="path",
+     *         required=false,
+     *         description="Folder ID to browse",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         required=false,
+     *         description="Search query",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort",
+     *         in="query",
+     *         required=false,
+     *         description="Sort parameter",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="files", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="folder", type="object"),
+     *             @OA\Property(property="ancestors", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
+
     public function myFiles(Request $request, string $folderId = null)
     {
         try {
@@ -111,6 +158,38 @@ class FileController extends Controller
         );
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/create-folder",
+     *     summary="Create a new folder",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name"},
+     *             @OA\Property(property="name", type="string", description="Folder name"),
+     *             @OA\Property(property="parent_id", type="integer", description="Parent folder ID")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Folder created successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="folder", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
     public function createFolder(StoreFolderRequest $request)
     {
         try {
@@ -142,6 +221,47 @@ class FileController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/upload-files",
+     *     summary="Upload files",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(
+     *                     property="files[]",
+     *                     type="array",
+     *                     @OA\Items(type="string", format="binary")
+     *                 ),
+     *                 @OA\Property(property="parent_id", type="integer"),
+     *                 @OA\Property(property="labels", type="array", @OA\Items(type="integer"))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Files uploaded successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="files", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="parent", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
 
     public function store(StoreFileRequest $request)
     {
@@ -246,6 +366,50 @@ class FileController extends Controller
         return $model;
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/api/update-file/{fileId}",
+     *     summary="Update file or folder",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="fileId",
+     *         in="path",
+     *         required=true,
+     *         description="File ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name"},
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="label_ids", type="array", @OA\Items(type="integer"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="File updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="file", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="File not found"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
+
     public function update(UpdateFileRequest $request, string $fileId)
     {
         try {
@@ -298,6 +462,36 @@ class FileController extends Controller
         }
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/delete-file/{fileId}",
+     *     summary="Move file to trash",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="fileId",
+     *         in="path",
+     *         required=true,
+     *         description="File ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"file_id"},
+     *             @OA\Property(property="file_id", type="integer")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="File moved to trash successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="message", type="string")
+     *         )
+     *     )
+     * )
+     */
     public function destroy(DeleteFileRequest $request, string $fileId)
     {
         $data = $request->validated();
@@ -312,6 +506,37 @@ class FileController extends Controller
             'message' => 'File(s)/folder(s) moved to trash successfully.',
         ]);
     }
+
+    /**
+     * @OA\Get(
+     *     path="/api/view-file/{fileId}",
+     *     summary="View/preview a file",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="fileId",
+     *         in="path",
+     *         required=true,
+     *         description="File ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="File content",
+     *         @OA\MediaType(
+     *             mediaType="application/octet-stream"
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Access denied"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="File not found"
+     *     )
+     * )
+     */
 
     public function viewFile(Request $request, $fileId)
     {
@@ -348,6 +573,35 @@ class FileController extends Controller
 
         return Storage::disk('public')->response($path);
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/download",
+     *     summary="Download files or folders",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="all", type="boolean"),
+     *             @OA\Property(property="ids", type="array", @OA\Items(type="integer")),
+     *             @OA\Property(property="parent_id", type="integer")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Download URL generated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="url", type="string"),
+     *             @OA\Property(property="filename", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed"
+     *     )
+     * )
+     */
 
     public function download(DownloadFileRequest $request)
     {
@@ -530,6 +784,37 @@ class FileController extends Controller
         return Storage::disk('public')->download($path);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/file-info/{fileId}",
+     *     summary="Get file information",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="fileId",
+     *         in="path",
+     *         required=true,
+     *         description="File ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="File information retrieved",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="file_info", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="File not found"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
+
     public function getFileInfo(Request $request, string $fileId)
     {
         try {
@@ -594,6 +879,41 @@ class FileController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/duplicate-file",
+     *     summary="Duplicate a file or folder",
+     *     tags={"Files"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"file_id"},
+     *             @OA\Property(property="file_id", type="integer")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="File duplicated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string"),
+     *             @OA\Property(property="file", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="File not found"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
     public function duplicate(DuplicateFileRequest $request)
     {
         try {
