@@ -305,6 +305,7 @@ class ShareController extends Controller
                 'file_name' => $file->name,
                 'file_path' => $file->path,
                 'file_type' => $file->mime,
+                'is_folder' => (bool)$file->is_folder,
                 'shared_by' => [
                     'id' => $file->user->id,
                     'name' => $file->user->fullname,
@@ -315,6 +316,50 @@ class ShareController extends Controller
         ]);
     }
 
+
+
+    /**
+     * Display the specified resource.
+     */
+
+    public function sharedWithMe(){
+        try{
+            if (!Auth::check()) {
+                return response()->json([
+                    'message' => 'Unauthenticated'],
+                    401);
+                }
+
+                $user = Auth::user();
+            $sharedFiles = $user->sharedFiles()
+                ->with(['user'])
+                ->get()
+                ->map(function ($file) {
+                    return [
+                        'file_id' => $file->id,
+                        'file_name' => $file->name,
+                        'file_path' => $file->path,
+                        'is_folder' => $file->is_folder,
+                        'shared_by' => [
+                            'id' => $file->user->id,
+                            'name' => $file->user->fullname,
+                            'email' => $file->user->email,
+                        ],
+                        'role' => Role::find($file->pivot->role_id)->name,
+                    ];
+                });
+
+                return response()->json([
+                'success' => true,
+                'data' => $sharedFiles,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve shared files: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function viewFilePublic($token){
         try {
@@ -341,49 +386,6 @@ class ShareController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to share file: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Display the specified resource.
-     */
-
-    public function sharedWithMe(){
-        try{
-            if (!Auth::check()) {
-                return response()->json([
-                    'message' => 'Unauthenticated'],
-                    401);
-            }
-
-            $user = Auth::user();
-            $sharedFiles = $user->sharedFiles()
-                ->with(['user'])
-                ->get()
-                ->map(function ($file) {
-                    return [
-                        'file_id' => $file->id,
-                        'file_name' => $file->name,
-                        'file_path' => $file->path,
-                        'is_folder' => $file->is_folder,
-                        'shared_by' => [
-                            'id' => $file->user->id,
-                            'name' => $file->user->fullname,
-                            'email' => $file->user->email,
-                        ],
-                        'role' => Role::find($file->pivot->role_id)->name,
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'data' => $sharedFiles,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve shared files: ' . $e->getMessage(),
             ], 500);
         }
     }
