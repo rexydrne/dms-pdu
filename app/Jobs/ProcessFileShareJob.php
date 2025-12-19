@@ -49,7 +49,7 @@ class ProcessFileShareJob implements ShouldQueue
 
         $this->targetUser->notify(new FileSharedNotification($notifData));
 
-        $shareLink = "https://dms-pdu-production.up.railway.app/share/{$this->shareRecord->token}";
+        $shareLink = "https://dms-pdu-production-ee0e.up.railway.app/share/{$this->shareRecord->token}";
 
         \Mail::to($this->targetUser->email)->send(
             new FileSharedMail($this->file, $this->sharedBy, $this->targetUser, $shareLink)
