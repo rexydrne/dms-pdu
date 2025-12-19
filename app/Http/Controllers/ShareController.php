@@ -378,7 +378,7 @@ class ShareController extends Controller
 
             Log::info('Accessing public shared file at path: ' . $file_path);
 
-            return redirect()->to("https://dms-pdu-production.up.railway.app/file-view/{$file_id}");
+            return redirect()->to("https://dms-pdu-production-ee0e.up.railway.app/file-view/{$file_id}");
             // return redirect()->to("http://127.0.0.1:3000/file-view/{$file_id}");
 
         } catch (\Exception $e) {
