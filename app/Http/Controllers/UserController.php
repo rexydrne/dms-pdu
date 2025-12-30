@@ -378,6 +378,7 @@ class UserController extends Controller
 
             return DB::transaction(function () use ($request) {
                 $user = $request->user();
+                $disk = Storage::disk(config('filesystems.default'));
 
                 if ($request->has('fullname')) {
                     $user->fullname = $request->input('fullname');
@@ -389,13 +390,17 @@ class UserController extends Controller
 
                 if ($request->hasFile('photo_profile')) {
                     if (!empty($user->photo_profile_path)) {
-                        Storage::disk('public')->delete('profile_photos/' . $user->photo_profile_path);
+                        $oldPath = 'profile_photos/' . $user->photo_profile_path;
+                        if ($disk->exists($oldPath)) {
+                            $disk->delete($oldPath);
+                        }
                     }
 
                     $extension = $request->file('photo_profile')->getClientOriginalExtension();
                     $basename = uniqid() . time();
                     $path = "{$basename}.{$extension}";
-                    $request->file('photo_profile')->storeAs('profile_photos', $path, 'public');
+
+                    $request->file('photo_profile')->storeAs('profile_photos', $path, config('filesystems.default'));
 
                     $user->photo_profile_path = $path;
                 }
@@ -445,6 +450,7 @@ class UserController extends Controller
     public function deletePhotoProfile(Request $request){
         try {
             $user = $request->user();
+            $disk = Storage::disk(config('filesystems.default'));
 
             if (empty($user->photo_profile_path)) {
                 return response()->json([
@@ -453,7 +459,10 @@ class UserController extends Controller
                 ], 400);
             }
 
-            Storage::disk('public')->delete('profile_photos/' . $user->photo_profile_path);
+            $fullPath = 'profile_photos/' . $user->photo_profile_path;
+            if ($disk->exists($fullPath)) {
+                $disk->delete($fullPath);
+            }
 
             $user->photo_profile_path = null;
             $user->save();

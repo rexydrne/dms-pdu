@@ -342,7 +342,7 @@ class FileController extends Controller
         $name = $file->getClientOriginalName();
         $uniqueName = FileHelper::generateUniqueName($name, $parent->id, $user->id);
 
-        $path = $file->store('/files/' . $user->id, 'public');
+        $path = $file->store('/files/' . $user->id, config('filesystems.default'));
         $slugCandidate = str_replace('.', ' ', $uniqueName);
         $slugCandidate = str_replace(['(', ')'], ' ', $slugCandidate);
         $newPath = Str::slug($slugCandidate);
@@ -565,13 +565,13 @@ class FileController extends Controller
 
         $path = $fileRecord->storage_path;
 
-        if (!Storage::disk('public')->exists($path)) {
-            abort(404, 'File is not found in server.');
+        if (!$disk->exists($path)) {
+            abort(404, 'File is not found in server/cloud.');
         }
 
-        Log::info("Serving file from storage", ['path' => $path]);
+        Log::info("Serving file from " . config('filesystems.default'), ['path' => $path]);
 
-        return Storage::disk('public')->response($path);
+        return $disk->response($path);
     }
 
     /**
@@ -640,43 +640,31 @@ class FileController extends Controller
 
     public function createZip($files): string
     {
-        $zipPath = 'zip/' . Str::random() . '.zip';
-        $publicPath = "$zipPath";
+        $zipName = 'zip/' . Str::random() . '.zip';
 
-        if (!Storage::disk('public')->exists(dirname($publicPath))) {
-            Storage::disk('public')->makeDirectory(dirname($publicPath));
+        if (!Storage::disk('local')->exists('zip')) {
+            Storage::disk('local')->makeDirectory('zip');
         }
 
-        $zipFile = Storage::disk('public')->path($publicPath);
+        $fullZipPath = Storage::disk('local')->path($zipName);
 
         $zip = new \ZipArchive();
-
-        if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+        if ($zip->open($fullZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             $this->addFilesToZip($zip, $files);
             $zip->close();
 
-            if (! Storage::disk('public')->exists($zipPath)) {
-                Log::error("Zip file was not created at expected path: {$zipFile}");
-                throw ValidationException::withMessages([
-                    'zip' => ['Failed to create zip archive.']
-                ]);
-            }
-            return $zipPath;
+            Storage::disk('local')->deleteDirectory('tmp');
+
+            return $zipName;
         }
 
-        Log::error("Failed to open zip archive for creation: {$zipFile}");
-        throw ValidationException::withMessages([
-            'zip' => ['Failed to create zip archive.']
-        ]);
-
-
-        return Storage::disk('public')->url($zipPath);
+        throw new \Exception("Failed to create ZIP.");
     }
 
     private function addFilesToZip($zip, $files, $ancestors = '')
     {
-        if (! Storage::disk('public')->exists('tmp')) {
-            Storage::disk('public')->makeDirectory('tmp');
+        if (! Storage::disk('local')->exists('tmp')) {
+            Storage::disk('local')->makeDirectory('tmp');
         }
 
         foreach ($files as $file) {
@@ -691,25 +679,20 @@ class FileController extends Controller
                     continue;
                 }
 
-                if (Storage::disk('public')->exists($file->storage_path)) {
-                    $localPath = Storage::disk('public')->path($file->storage_path);
-                } else {
-                    if (! Storage::exists($file->storage_path)) {
-                        Log::warning("Source file not found on any disk: {$file->storage_path} (id: {$file->id})");
-                        continue;
+                $diskCloud = Storage::disk(config('filesystems.default'));
+
+                if ($diskCloud->exists($file->storage_path)) {
+                    $content = $diskCloud->get($file->storage_path);
+                    $tempPath = 'tmp/' . Str::random(8) . '_' . basename($file->storage_path);
+
+                    Storage::disk('local')->put($tempPath, $content);
+                    $fullPath = Storage::disk('local')->path($tempPath);
+
+                    if (file_exists($fullPath)) {
+                        $zip->addFile($fullPath, $ancestors . $file->name);
                     }
-
-                    $content = Storage::get($file->storage_path);
-                    $dest = 'tmp/' . Str::random(8) . '_' . basename($file->storage_path);
-                    Storage::disk('public')->put($dest, $content);
-                    $localPath = Storage::disk('public')->path($dest);
                 }
 
-                if (file_exists($localPath)) {
-                    $zip->addFile($localPath, $ancestors . $file->name);
-                } else {
-                    Log::warning("Local path for zipping does not exist: {$localPath} (file id: {$file->id})");
-                }
             } catch (Exception $e) {
                 Log::warning("Failed to add file to zip: {$file->id} - {$e->getMessage()}");
                 continue;
@@ -769,19 +752,17 @@ class FileController extends Controller
     {
         $path = $request->query('path');
 
-        if (! $path) {
-            throw ValidationException::withMessages(['path' => 'Path is required']);
-        }
-
-        if (! preg_match('/^(zip|tmp)\//', $path)) {
+        if (!preg_match('/^(zip|tmp)\//', $path)) {
             abort(403, 'Forbidden');
         }
 
-        if (! Storage::disk('public')->exists($path)) {
-            abort(404, 'File not found');
+        if (!Storage::disk('local')->exists($path)) {
+            abort(404, 'ZIP file has expired or not found');
         }
 
-        return Storage::disk('public')->download($path);
+        return Storage::disk('local')
+            ->download($path)
+            ->deleteFileAfterSend(true);
     }
 
     /**
@@ -968,11 +949,13 @@ class FileController extends Controller
 
         // Copy the physical file
         $newStoragePath = null;
-        if ($originalFile->storage_path && Storage::disk('public')->exists($originalFile->storage_path)) {
+        $disk = Storage::disk(config('filesystems.default'));
+
+        if ($originalFile->storage_path && $disk->exists($originalFile->storage_path)) {
             $extension = pathinfo($originalFile->storage_path, PATHINFO_EXTENSION);
             $newStoragePath = '/files/' . $user->id . '/' . Str::random(40) . '.' . $extension;
 
-            Storage::disk('public')->copy(
+            $disk->copy(
                 $originalFile->storage_path,
                 $newStoragePath
             );
